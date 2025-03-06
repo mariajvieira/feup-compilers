@@ -18,7 +18,6 @@ program
     : classDecl EOF
     ;
 
-
 classDecl
     : CLASS name=ID
         '{'
@@ -45,29 +44,27 @@ param
     ;
 
 stmt
-    : expr '=' expr ';' #AssignStmt //
+    : lhs=ID '=' rhs=expr ';' #AssignStmt
     | RETURN expr ';' #ReturnStmt
     ;
 
-
 expr
-    : expr '+' term #AddExpr
+    : left=expr op='+' right=term #BinaryOp
     | term #ExprTerm
     ;
 
-
 term
-    : term '*' unary #MulExpr
+    : left=term op='*' right=unary #BinaryOp
     | unary #TermUnary
     ;
 
 unary
-    : '!' unary #NegateExpr
+    : op='!' operand=unary #NegateOp
     | factor #UnaryFactor
     ;
 
 factor
-    : INTEGER #IntegerLiteral
-    | ID #VarRefExpr
+    : value=INTEGER #IntegerLiteral
+    | name=ID #VarRef
     | '(' expr ')' #ParenthesizedExpr
     ;
