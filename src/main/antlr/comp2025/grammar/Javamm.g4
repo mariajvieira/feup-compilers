@@ -55,9 +55,15 @@ expr
     | term #ExprTerm
     ;
 
+
 term
-    : term '*' factor #MulExpr
-    | factor #TermFactor
+    : term '*' unary #MulExpr
+    | unary #TermUnary
+    ;
+
+unary
+    : '!' unary #NegateExpr
+    | factor #UnaryFactor
     ;
 
 factor
