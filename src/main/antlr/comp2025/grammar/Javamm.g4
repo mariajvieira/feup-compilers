@@ -49,10 +49,19 @@ stmt
     | RETURN expr ';' #ReturnStmt
     ;
 
+
 expr
-    : expr op= '*' expr #BinaryExpr //
-    | expr op= '+' expr #BinaryExpr //
-    | value=INTEGER #IntegerLiteral //
-    | name=ID #VarRefExpr //
+    : expr '+' term #AddExpr
+    | term #ExprTerm
     ;
 
+term
+    : term '*' factor #MulExpr
+    | factor #TermFactor
+    ;
+
+factor
+    : INTEGER #IntegerLiteral
+    | ID #VarRefExpr
+    | '(' expr ')' #ParenthesizedExpr
+    ;
