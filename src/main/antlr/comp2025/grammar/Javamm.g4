@@ -80,23 +80,20 @@ exprRel
     ;
 
 expr2
-    : left=expr2 op=('+'|'-') right=expr3  # AddSub
-    | expr3                               # Expr3Pass
+    : left=expr2 op=('*'|'/') right=expr3  # MulDiv
+    | expr3                                # EXpr3Pass
     ;
 
 expr3
-    : left=expr3 op=('*'|'/') right=unary  # MulDiv
-    | unary                               # UnaryPass
+    : left=expr3 op=('+'|'-') right=unary  # AddSub
+    | unary                                # UnaryPass
     ;
 
 unary
     : op='!' operand=unary               # Negate
-    | access                            # UnaryAccess
+    | methodAccess                       # UnaryAccess
+    | 'new' baseType=type '(' expr* ')'  # NewClassInstance
     | 'new' baseType=type '[' expr ']'   # NewArray
-    ;
-
-access
-    : primary (suffix)*
     ;
 
 primary
@@ -107,11 +104,19 @@ primary
     ;
 
 arrayExpr
-    : expr (',' expr)*                   # ArrayInit
+    : expr (',' expr)*                    # ArrayInit
     ;
 
-suffix
-    : '.' method=ID '(' (expr (',' expr)*)? ')'   # MethodCall
-    | '[' expr ']'                              # ArrayAccess
-    | '.' field=ID                              # FieldAccess
+methodAccess
+    : primary (methodSuffix)*             # MethodCallChain
+    ;
+
+methodSuffix
+    : '.' method=ID '(' exprList? ')'     # MethodCall
+    | '.' field=ID                        # FieldAccess
+    | '[' expr ']'                        # ArrayAccess
+    ;
+
+exprList
+    : expr (',' expr)*                    # ArgumentList
     ;
