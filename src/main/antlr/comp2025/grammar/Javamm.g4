@@ -5,9 +5,12 @@ grammar Javamm;
 }
 
 CLASS : 'class' ;
-INT : 'int' ;
+EXTENDS : 'extends' ;
 PUBLIC : 'public' ;
 RETURN : 'return' ;
+INT : 'int' ;
+BOOLEAN : 'boolean' ;
+IMPORT : 'import' ;
 
 INTEGER : [0-9]+ ;
 ID : [a-zA-Z]+ ;
@@ -18,10 +21,20 @@ program
     : classDecl EOF
     ;
 
+importDecl
+    : IMPORT qualifiedName ';'
+    ;
+
+qualifiedName
+    : ID ('.' ID)*
+    ;
+
+
 classDecl
     : CLASS name=ID
+        ('extends' superClass=ID)?
         '{'
-        methodDecl*
+        varDecl* methodDecl*
         '}'
     ;
 
@@ -30,7 +43,10 @@ varDecl
     ;
 
 type
-    : name= INT ;
+    : INT ('[' ']')?       // int, int[]
+    | 'boolean'            // boolean
+    | ID                  // class name
+    ;
 
 methodDecl locals[boolean isPublic=false]
     : (PUBLIC {$isPublic=true;})?
@@ -44,8 +60,9 @@ param
     ;
 
 stmt
-    : lhs=ID '=' rhs=expr ';' #AssignStmt
-    | RETURN expr ';' #ReturnStmt
+    : '{' stmt* '}'                           # Block
+    | 'if' '(' cond=expr ')' stmt ( 'else' stmt )?  # If
+    | 'while' '(' cond=expr ')' stmt             # While
     ;
 
 expr
@@ -55,7 +72,12 @@ expr
 
 expr1
     : left=expr1 '&&' right=expr2   # LogicalAnd
-    | expr2                        # Expr2Pass
+    | exprRel                        # ExprRelPass
+    ;
+
+exprRel
+    : left=exprRel op=('<' | '>' | '<=' | '>=') right=expr2  # Relational
+    | expr2                                                 # Expr2Pass
     ;
 
 expr2
@@ -64,7 +86,7 @@ expr2
     ;
 
 expr3
-    : left=expr3 op=('*'|'/') right=unary  # MulDiv
+    : left=expr3 op=('*'|'/') right=unary  # MultDiv
     | unary                               # UnaryPass
     ;
 
