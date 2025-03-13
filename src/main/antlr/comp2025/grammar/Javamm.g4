@@ -29,7 +29,6 @@ qualifiedName
     : ID ('.' ID)*
     ;
 
-
 classDecl
     : CLASS name=ID
         ('extends' superClass=ID)?
@@ -86,13 +85,14 @@ expr2
     ;
 
 expr3
-    : left=expr3 op=('*'|'/') right=unary  # MultDiv
+    : left=expr3 op=('*'|'/') right=unary  # MulDiv
     | unary                               # UnaryPass
     ;
 
 unary
     : op='!' operand=unary               # Negate
     | access                            # UnaryAccess
+    | 'new' baseType=type '[' expr ']'   # NewArray
     ;
 
 access
@@ -103,6 +103,11 @@ primary
     : value=INTEGER                     # IntegerLiteral
     | name=ID                           # VarRef
     | '(' expr ')'                      # ParenthesizedExpr
+    | '[' arrayExpr ']'                  # ArrayLiteral
+    ;
+
+arrayExpr
+    : expr (',' expr)*                   # ArrayInit
     ;
 
 suffix
