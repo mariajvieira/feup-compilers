@@ -49,25 +49,42 @@ stmt
     ;
 
 expr
-    : left=expr op='+' right=term #Add
-    | left=expr op='-' right=term #Sub
-    | term #ExprTerm
+    : left=expr '||' right=expr1    # LogicalOr
+    | expr1                        # Expr1Pass
     ;
 
+expr1
+    : left=expr1 '&&' right=expr2   # LogicalAnd
+    | expr2                        # Expr2Pass
+    ;
 
-term
-    : left=term op='*' right=unary #Mult
-    | left=term op='/' right=unary #Div
-    | unary #TermUnary
+expr2
+    : left=expr2 op=('+'|'-') right=expr3  # AddSub
+    | expr3                               # Expr3Pass
+    ;
+
+expr3
+    : left=expr3 op=('*'|'/') right=unary  # MulDiv
+    | unary                               # UnaryPass
     ;
 
 unary
-    : op='!' operand=unary #Negate
-    | factor #UnaryFactor
+    : op='!' operand=unary               # Negate
+    | access                            # UnaryAccess
     ;
 
-factor
-    : value=INTEGER #IntegerLiteral
-    | name=ID #VarRef
-    | '(' expr ')' #ParenthesizedExpr
+access
+    : primary (suffix)*
+    ;
+
+primary
+    : value=INTEGER                     # IntegerLiteral
+    | name=ID                           # VarRef
+    | '(' expr ')'                      # ParenthesizedExpr
+    ;
+
+suffix
+    : '.' method=ID '(' (expr (',' expr)*)? ')'   # MethodCall
+    | '[' expr ']'                              # ArrayAccess
+    | '.' field=ID                              # FieldAccess
     ;
