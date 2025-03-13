@@ -49,17 +49,20 @@ stmt
     ;
 
 expr
-    : left=expr op='+' right=term #BinaryOp
+    : left=expr op='+' right=term #Add
+    | left=expr op='-' right=term #Sub
     | term #ExprTerm
     ;
 
+
 term
-    : left=term op='*' right=unary #BinaryOp
+    : left=term op='*' right=unary #Mult
+    | left=term op='/' right=unary #Div
     | unary #TermUnary
     ;
 
 unary
-    : op='!' operand=unary #NegateOp
+    : op='!' operand=unary #Negate
     | factor #UnaryFactor
     ;
 
