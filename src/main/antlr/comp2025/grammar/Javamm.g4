@@ -1,3 +1,4 @@
+
 grammar Javamm;
 
 @header {
@@ -13,14 +14,19 @@ BOOLEAN : 'boolean' ;
 IMPORT : 'import' ;
 STATIC : 'static' ;
 VOID : 'void' ;
+NEW : 'new' ;
+TRUE : 'true' ;
+FALSE : 'false' ;
+THIS : 'this' ;
+STRING : 'String' ;
 
 INTEGER : [0-9]+ ;
-ID : [a-zA-Z]+ ;
+ID : [a-zA-Z_][a-zA-Z0-9_]* ;
 
 WS : [ \t\n\r\f]+ -> skip ;
 
 program
-    : classDecl EOF
+    : (importDecl)* classDecl EOF
     ;
 
 importDecl
@@ -32,11 +38,8 @@ qualifiedName
     ;
 
 classDecl
-    : CLASS name=ID
-        ('extends' superClass=ID)?
-        '{'
-        varDecl* methodDecl*
-        '}'
+    : CLASS name=ID (EXTENDS superClass=ID)?
+      '{' varDecl* methodDecl* '}'
     ;
 
 varDecl
@@ -45,97 +48,87 @@ varDecl
 
 type
     : INT ('[' ']')?       // int, int[]
-    | BOOLEAN           // boolean
-    | ID ('[' ']')?        // class name and class[]
-    | VOID                 // void return type
+    | BOOLEAN              // boolean
+    | STRING ('[' ']')?    // String, String[]
+    | ID                   // class name
     ;
 
 methodDecl locals[boolean isPublic=false, boolean isStatic=false]
-    : (PUBLIC {$isPublic=true;})?
-      (STATIC {$isStatic=true;})?
-      type name=ID
+    : (PUBLIC {$isPublic=true;})? 
+      (STATIC {$isStatic=true;})? 
+      (type | VOID) name=ID 
       '(' paramList? ')'
       '{' varDecl* stmt* '}'
     ;
 
 paramList
-    : param (',' param)*              # MultipleParams
+    : param (',' param)*
     ;
 
 param
-    : type name=ID                    # SingleParam
-    | type '...' name=ID              # VarargParam
+    : type name=ID
+    | type '...' name=ID
     ;
 
 stmt
     : '{' stmt* '}'                           # Block
-    | 'if' '(' cond=expr ')' stmt ( 'else' stmt )?  # If
-    | 'while' '(' cond=expr ')' stmt             # While
-    | 'return' expr? ';'                        # Return
-    | expr '=' expr ';'                         # Assign
-    | expr ';'                                  # ExprStmt
+    | 'if' '(' expr ')' stmt 
+      ('else' stmt)?                          # IfStmt
+    | 'while' '(' expr ')' stmt               # WhileStmt
+    | RETURN expr? ';'                        # ReturnStmt
+    | target=expr '=' value=expr ';'          # AssignStmt
+    | expr ';'                                # ExprStmt
     ;
 
 expr
-    : left=expr ('*'|'/')  right=expr1    # MulDiv
-    | expr1                        # Expr1Pass
-    ;
-
-expr1
-    : left=expr1 ('+'|'-') right=expr2   # AddSub
-    | exprRel                        # ExprRelPass
-    ;
-
-exprRel
-    : left=exprRel op=('<' | '>' | '<=' | '>=') right=expr2  # Relational
-    | expr2                                                 # Expr2Pass
+    : left=expr '||' right=expr2              # Or
+    | expr2                                   # Expr2Pass
     ;
 
 expr2
-    : left=expr2 op='||' right=expr3  # LogicalOr
-    | expr3                                # Expr3Pass
+    : left=expr2 '&&' right=expr3             # And
+    | expr3                                   # Expr3Pass
     ;
 
 expr3
-    : left=expr3 op='&&' right=unary  # LogicalAnd
-    | unary                                # UnaryPass
+    : left=expr3 op=('<'|'>'|'<='|'>=') right=expr4    # Compare
+    | expr4                                             # Expr4Pass
     ;
 
-unary
-    : op='!' operand=unary               # Negate
-    | 'new' baseType=type '(' expr* ')'  # NewClassInstance
-    | 'new' baseType=type '[' expr ']'   # NewArray
-    | primary                           # UnaryPrimary
+expr4
+    : left=expr4 op=('+'|'-') right=expr5     # AddSub
+    | expr5                                   # Expr5Pass
     ;
 
-primary
-    : base=basePrimary (methodSuffix)*  # PrimaryWithSuffix
+expr5
+    : left=expr5 op=('*'|'/') right=expr6     # MulDiv
+    | expr6                                   # Expr6Pass
     ;
 
-basePrimary
-    : value=INTEGER                     # IntegerLiteral
-    | name=ID                           # VarRef
-    | '(' expr ')'                      # ParenthesizedExpr
-    | '[' arrayExpr ']'                  # ArrayLiteral
+expr6
+    : '!' expr6                               # Not
+    | NEW type '[' expr ']'                   # NewArray
+    | NEW ID '(' ')'                          # NewObject
+    | atom                                    # AtomExpr
     ;
 
-methodSuffix
-    : '.' method=ID '(' exprList? ')'     # MethodCall
-    | '.' field=ID                        # FieldAccess
-    | '[' expr ']'                        # ArrayAccess
+atom
+    : INTEGER                                 # Int
+    | TRUE                                    # True
+    | FALSE                                   # False
+    | THIS                                    # This
+    | ID                                      # Id
+    | '(' expr ')'                            # Parenthesis
+    | '[' arrayInit? ']'                      # ArrayLiteral
+    | atom '.' ID '(' args? ')'               # MethodCall
+    | atom '.' ID                             # FieldAccess
+    | atom '[' expr ']'                       # ArrayAccess
     ;
 
-arrayExpr
-    : expr (',' expr)*                    # ArrayInit
+args
+    : expr (',' expr)*
     ;
 
-methodAccess
-    : primary (methodSuffix)*             # MethodCallChain
+arrayInit
+    : expr (',' expr)*
     ;
-
-
-
-exprList
-    : expr (',' expr)*                    # ArgumentList
-    ;
-
