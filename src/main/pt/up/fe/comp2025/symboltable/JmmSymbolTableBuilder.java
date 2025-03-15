@@ -37,27 +37,29 @@ public class JmmSymbolTableBuilder {
     public JmmSymbolTable build(JmmNode root) {
         reports = new ArrayList<>();
 
-        JmmNode classDecl = null;
-        for (JmmNode child : root.getChildren()) {
-            if (Kind.CLASS_DECL.check(child)) {
-                classDecl = child;
-                break;
-            }
-        }
+        // Recupera o nó de declaração da classe no nível mais alto
+        var classDecl = root.getChildren().stream()
+                .filter(node -> Kind.CLASS_DECL.check(node))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Class declaration not found"));
 
-// Verifica se encontrou uma classe
-        SpecsCheck.checkArgument(classDecl != null, () -> "Expected a class declaration but found none.");
+        // Extrai os imports
+        var imports = buildImports(root);
 
-
+        // Extrai informações sobre a classe
         String className = classDecl.get("name");
-        String superClass = classDecl.hasAttribute("super") ? classDecl.get("super") : "";
-        List<String> imports = buildImports(root);
-        List<Symbol> fields = buildFields(classDecl);
-        List<String> methods = buildMethods(classDecl);
-        Map<String, Type> returnTypes = buildReturnTypes(classDecl);
-        Map<String, List<Symbol>> params = buildParams(classDecl);
-        Map<String, List<Symbol>> locals = buildLocals(classDecl);
 
+        // Extrai nome da superclasse (se existir)
+        String superClass = classDecl.hasAttribute("superClass") ? classDecl.get("superClass") : null;
+
+        // Extrai outros elementos da classe
+        var fields = buildFields(classDecl);
+        var methods = buildMethods(classDecl);
+        var returnTypes = buildReturnTypes(classDecl);
+        var params = buildParams(classDecl);
+        var locals = buildLocals(classDecl);
+
+        // Retorna a tabela de símbolos construída com a superclasse
         return new JmmSymbolTable(className, superClass, imports, fields, methods, returnTypes, params, locals);
     }
 
