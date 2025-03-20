@@ -48,39 +48,35 @@ public class TypeUtils {
      */
     public Type getExprType(JmmNode expr) {
         return switch (expr.getKind()) {
-            case "AddSub", "MulDiv", "Compare" -> newIntType(); // Operações aritméticas e comparações retornam int
-            case "And", "Or", "Not" -> new Type("boolean", false); // Operadores booleanos retornam boolean
-            case "Int" -> newIntType(); // Literal inteiro
-            case "True", "False" -> new Type("boolean", false); // Literais booleanos
-            case "This" -> new Type(table.getClassName(), false); // Palavra-chave this, tipo da própria classe
-            case "NewArray" -> new Type("int", true); // Arrays de inteiros
-            case "NewObject" -> new Type(expr.get("name"), false); // Instância de objeto, o nome da classe
-            case "ArrayAccess" -> newIntType(); // Acesso a arrays, devolve o tipo base (int)
-            case "ArrayLiteral" -> new Type("int", true); // Literal array (int[])
+            case "AddSub", "MulDiv", "Compare" -> newIntType();
+            case "And", "Or", "Not" -> new Type("boolean", false);
+            case "Int" -> newIntType();
+            case "True", "False" -> new Type("boolean", false);
+            case "This" -> new Type(table.getClassName(), false);
+            case "NewArray" -> new Type("int", true);
+            case "NewObject" -> new Type(expr.get("name"), false);
+            case "ArrayAccess" -> newIntType();
+            case "ArrayLiteral" -> new Type("int", true);
            // case "Id" -> {
              //   String varName = expr.get("name");
                 //Type type = getTypeFromSymbolTable(varName);
-                //yield type != null ? type : new Type("unknown", false); // Busca o tipo na SymbolTable
+                //yield type != null ? type : new Type("unknown", false);
             //}
-            case "MethodCall" -> {
-                // Aqui poderias procurar a função na tabela de símbolos, mas para já devolve 'unknown'
+            case "MethodCall" -> { // por fazer
                 yield new Type("unknown", false);
             }
-            case "Parenthesis" -> getExprType(expr.getChildren().get(0)); // Tipo do que está dentro dos parêntesis
-            default -> new Type("unknown", false); // Por defeito, tipo desconhecido
+            case "Parenthesis" -> getExprType(expr.getChildren().get(0));
+            default -> new Type("unknown", false);
         };
     }
 
     private Type getTypeFromSymbolTable(String varName, String methodSignature) {
-        // Procurar na lista de variáveis locais do método
         for (var local : table.getLocalVariables(methodSignature)) {
             if (local.getName().equals(varName)) return local.getType();
         }
-        // Procurar na lista de parâmetros do método
         for (var param : table.getParameters(methodSignature)) {
             if (param.getName().equals(varName)) return param.getType();
         }
-        // Procurar na lista de campos (fields) da classe
         for (var field : table.getFields()) {
             if (field.getName().equals(varName)) return field.getType();
         }
