@@ -51,12 +51,13 @@ type
     | name=BOOLEAN              // boolean
     | name=STRING ('[' ']')?    // String, String[]
     | name=ID                   // class name
+    | name = VOID
     ;
 
 methodDecl locals[boolean isPublic=false, boolean isStatic=false]
     : (PUBLIC {$isPublic=true;})? 
       (STATIC {$isStatic=true;})? 
-      (type | VOID) name=ID 
+      type name=ID
       '(' paramList? ')'
       '{' varDecl* stmt* '}'
     ;
