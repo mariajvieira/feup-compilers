@@ -47,10 +47,10 @@ varDecl
     ;
 
 type
-    : INT ('[' ']')?       // int, int[]
-    | BOOLEAN              // boolean
-    | STRING ('[' ']')?    // String, String[]
-    | ID                   // class name
+    : name=INT ('[' ']')?       // int, int[]
+    | name=BOOLEAN              // boolean
+    | name=STRING ('[' ']')?    // String, String[]
+    | name=ID                   // class name
     ;
 
 methodDecl locals[boolean isPublic=false, boolean isStatic=false]
@@ -117,7 +117,7 @@ atom
     | TRUE                                    # True
     | FALSE                                   # False
     | THIS                                    # This
-    | ID                                      # Id
+    | name=ID                                 # Id
     | '(' expr ')'                            # Parenthesis
     | '[' arrayInit? ']'                      # ArrayLiteral
     | atom '.' ID '(' args? ')'               # MethodCall

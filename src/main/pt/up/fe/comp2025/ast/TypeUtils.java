@@ -57,21 +57,19 @@ public class TypeUtils {
             case "NewObject" -> new Type(expr.get("name"), false); // Instância de objeto, o nome da classe
             case "ArrayAccess" -> newIntType(); // Acesso a arrays, devolve o tipo base (int)
             case "ArrayLiteral" -> new Type("int", true); // Literal array (int[])
-            case "Id" -> {
-                String varName = expr.get("name");
-                Type type = getTypeFromSymbolTable(varName);
-                yield type != null ? type : new Type("unknown", false); // Busca o tipo na SymbolTable
-            }
+           // case "Id" -> {
+             //   String varName = expr.get("name");
+                //Type type = getTypeFromSymbolTable(varName);
+                //yield type != null ? type : new Type("unknown", false); // Busca o tipo na SymbolTable
+            //}
             case "MethodCall" -> {
                 // Aqui poderias procurar a função na tabela de símbolos, mas para já devolve 'unknown'
                 yield new Type("unknown", false);
             }
-            case "Parenthesis" -> getExprType(expr.getJmmChild(0)); // Tipo do que está dentro dos parêntesis
+            case "Parenthesis" -> getExprType(expr.getChildren().get(0)); // Tipo do que está dentro dos parêntesis
             default -> new Type("unknown", false); // Por defeito, tipo desconhecido
         };
     }
-
-
 
     private Type getTypeFromSymbolTable(String varName, String methodSignature) {
         // Procurar na lista de variáveis locais do método
