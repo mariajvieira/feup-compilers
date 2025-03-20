@@ -90,11 +90,26 @@ public class JmmSymbolTableBuilder {
     private Map<String, List<Symbol>> buildParams(JmmNode classDecl) {
         Map<String, List<Symbol>> map = new HashMap<>();
 
-        for (var method : classDecl.getChildren(METHOD_DECL)) {
+        for (var method : classDecl.getChildren(Kind.METHOD_DECL.getNodeName())) {
             var name = method.get("name");
-            var params = method.getChildren(PARAM).stream()
-                    .map(param -> new Symbol(TypeUtils.convertType(param.getChild(0)), param.get("name")))
-                    .toList();
+            List<Symbol> params = new ArrayList<>();
+            var paramListOpt = method.getChildren().stream()
+                    .filter(child -> child.getKind().equals("ParamList"))
+                    .findFirst();
+
+            if (paramListOpt.isPresent()) {
+                var paramList = paramListOpt.get();
+                var paramNodes = paramList.getChildren();
+                params = paramNodes.stream()
+                        .map(param -> {
+                            var typeNode = param.getChild(0);
+                            var type = TypeUtils.convertType(typeNode);
+                            var paramName = param.get("name");
+                            return new Symbol(type, paramName);
+                        })
+                        .collect(Collectors.toList());
+            }
+
             map.put(name, params);
         }
         return map;
