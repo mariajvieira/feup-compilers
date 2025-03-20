@@ -37,29 +37,23 @@ public class JmmSymbolTableBuilder {
     public JmmSymbolTable build(JmmNode root) {
         reports = new ArrayList<>();
 
-        // Recupera o nó de declaração da classe no nível mais alto
         var classDecl = root.getChildren().stream()
                 .filter(node -> Kind.CLASS_DECL.check(node))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Class declaration not found"));
 
-        // Extrai os imports
         var imports = buildImports(root);
 
-        // Extrai informações sobre a classe
         String className = classDecl.get("name");
 
-        // Extrai nome da superclasse (se existir)
         String superClass = classDecl.hasAttribute("superClass") ? classDecl.get("superClass") : null;
 
-        // Extrai outros elementos da classe
         var fields = buildFields(classDecl);
         var methods = buildMethods(classDecl);
         var returnTypes = buildReturnTypes(classDecl);
         var params = buildParams(classDecl);
         var locals = buildLocals(classDecl);
 
-        // Retorna a tabela de símbolos construída com a superclasse
         return new JmmSymbolTable(className, superClass, imports, fields, methods, returnTypes, params, locals);
     }
 
