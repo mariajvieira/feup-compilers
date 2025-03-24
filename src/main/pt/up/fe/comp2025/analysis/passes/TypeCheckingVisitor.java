@@ -32,6 +32,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
         addVisit("WhileStmt", this::visitWhileStmt);
         addVisit("ReturnStmt", this::visitReturnStmt);
         addVisit("MethodCall", this::visitMethodCall);
+        addVisit("ArrayLiteral", this::visitArrayLiteral); // Add visit for ArrayLiteral
     }
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
@@ -53,8 +54,8 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                     assignStmt.getLine(),
                     assignStmt.getColumn(),
                     "Cannot assign value of type '" + valueType.getName() +
-                            (valueType.isArray() ? "[]" : "") + "' to variable of type '" +
-                            targetType.getName() + (targetType.isArray() ? "[]" : "") + "'",
+                            (valueType.isArray() ? "" : "") + "' to variable of type '" +
+                            targetType.getName() + (targetType.isArray() ? "" : "") + "'",
                     null
             ));
         }
@@ -75,7 +76,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                     opNode.getLine(),
                     opNode.getColumn(),
                     "Left operand of arithmetic operation must be of type 'int', but got '" +
-                            leftType.getName() + (leftType.isArray() ? "[]" : "") + "'",
+                            leftType.getName() + (leftType.isArray() ? "" : "") + "'",
                     null
             ));
         }
@@ -86,7 +87,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                     opNode.getLine(),
                     opNode.getColumn(),
                     "Right operand of arithmetic operation must be of type 'int', but got '" +
-                            rightType.getName() + (rightType.isArray() ? "[]" : "") + "'",
+                            rightType.getName() + (rightType.isArray() ? "" : "") + "'",
                     null
             ));
         }
@@ -109,7 +110,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                         compareNode.getLine(),
                         compareNode.getColumn(),
                         "Left operand of comparison operation must be of type 'int', but got '" +
-                                leftType.getName() + (leftType.isArray() ? "[]" : "") + "'",
+                                leftType.getName() + (leftType.isArray() ? "" : "") + "'",
                         null
                 ));
             }
@@ -120,7 +121,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                         compareNode.getLine(),
                         compareNode.getColumn(),
                         "Right operand of comparison operation must be of type 'int', but got '" +
-                                rightType.getName() + (rightType.isArray() ? "[]" : "") + "'",
+                                rightType.getName() + (rightType.isArray() ? "" : "") + "'",
                         null
                 ));
             }
@@ -133,8 +134,8 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                         compareNode.getLine(),
                         compareNode.getColumn(),
                         "Incompatible types in equality operation: '" +
-                                leftType.getName() + (leftType.isArray() ? "[]" : "") + "' and '" +
-                                rightType.getName() + (rightType.isArray() ? "[]" : "") + "'",
+                                leftType.getName() + (leftType.isArray() ? "" : "") + "' and '" +
+                                rightType.getName() + (rightType.isArray() ? "" : "") + "'",
                         null
                 ));
             }
@@ -156,7 +157,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                     logicalNode.getLine(),
                     logicalNode.getColumn(),
                     "Left operand of logical operation must be of type 'boolean', but got '" +
-                            leftType.getName() + (leftType.isArray() ? "[]" : "") + "'",
+                            leftType.getName() + (leftType.isArray() ? "" : "") + "'",
                     null
             ));
         }
@@ -167,7 +168,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                     logicalNode.getLine(),
                     logicalNode.getColumn(),
                     "Right operand of logical operation must be of type 'boolean', but got '" +
-                            rightType.getName() + (rightType.isArray() ? "[]" : "") + "'",
+                            rightType.getName() + (rightType.isArray() ? "" : "") + "'",
                     null
             ));
         }
@@ -185,7 +186,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                     notNode.getLine(),
                     notNode.getColumn(),
                     "Operand of logical NOT operation must be of type 'boolean', but got '" +
-                            exprType.getName() + (exprType.isArray() ? "[]" : "") + "'",
+                            exprType.getName() + (exprType.isArray() ? "" : "") + "'",
                     null
             ));
         }
@@ -216,7 +217,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                     arrayAccess.getLine(),
                     arrayAccess.getColumn(),
                     "Array index must be of type 'int', but got '" +
-                            indexType.getName() + (indexType.isArray() ? "[]" : "") + "'",
+                            indexType.getName() + (indexType.isArray() ? "" : "") + "'",
                     null
             ));
         }
@@ -234,7 +235,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                     ifStmt.getLine(),
                     ifStmt.getColumn(),
                     "If condition must be of type 'boolean', but got '" +
-                            conditionType.getName() + (conditionType.isArray() ? "[]" : "") + "'",
+                            conditionType.getName() + (conditionType.isArray() ? "" : "") + "'",
                     null
             ));
         }
@@ -252,7 +253,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                     whileStmt.getLine(),
                     whileStmt.getColumn(),
                     "While condition must be of type 'boolean', but got '" +
-                            conditionType.getName() + (conditionType.isArray() ? "[]" : "") + "'",
+                            conditionType.getName() + (conditionType.isArray() ? "" : "") + "'",
                     null
             ));
         }
@@ -263,8 +264,9 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
     private Void visitReturnStmt(JmmNode returnStmt, SymbolTable table) {
         if (!returnStmt.getChildren().isEmpty()) {
             JmmNode returnExpr = returnStmt.getChildren().get(0);
-            Type returnExprType = typeUtils.getExprType(returnExpr);
             Type methodReturnType = table.getReturnType(currentMethod);
+            Type returnExprType = typeUtils.getExprType(returnExpr);
+
 
             if (!isTypeCompatible(methodReturnType, returnExprType, table)) {
                 addReport(Report.newError(
@@ -272,9 +274,9 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                         returnStmt.getLine(),
                         returnStmt.getColumn(),
                         "Incompatible return type: expected '" +
-                                methodReturnType.getName() + (methodReturnType.isArray() ? "[]" : "") +
+                                methodReturnType.getName() + (methodReturnType.isArray() ? "" : "") +
                                 "', but got '" + returnExprType.getName() +
-                                (returnExprType.isArray() ? "[]" : "") + "'",
+                                (returnExprType.isArray() ? "" : "") + "'",
                         null
                 ));
             }
@@ -327,8 +329,8 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                                     args.get(i).getColumn(),
                                     "Incompatible argument type for parameter " + (i + 1) +
                                             ": expected '" + paramType.getName() +
-                                            (paramType.isArray() ? "[]" : "") + "', but got '" +
-                                            argType.getName() + (argType.isArray() ? "[]" : "") + "'",
+                                            (paramType.isArray() ? "" : "") + "', but got '" +
+                                            argType.getName() + (argType.isArray() ? "" : "") + "'",
                                     null
                             ));
                         }
@@ -339,6 +341,32 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
 
         return null;
     }
+
+    private Void visitArrayLiteral(JmmNode arrayLiteral, SymbolTable table) {
+        if (!arrayLiteral.getChildren().isEmpty()) {
+            JmmNode arrayInitNode = arrayLiteral.getChildren().get(0);
+            if (arrayInitNode != null && arrayInitNode.getChildren().size() > 0) {
+                Type firstElementType = typeUtils.getExprType(arrayInitNode.getChildren().get(0));
+                for (int i = 1; i < arrayInitNode.getChildren().size(); i++) {
+                    Type currentElementType = typeUtils.getExprType(arrayInitNode.getChildren().get(i));
+                    if (!isTypeCompatible(firstElementType, currentElementType, table)) {
+                        addReport(Report.newError(
+                                Stage.SEMANTIC,
+                                arrayInitNode.getChildren().get(i).getLine(),
+                                arrayInitNode.getChildren().get(i).getColumn(),
+                                "Incompatible type in array initializer: expected '" +
+                                        firstElementType.getName() + (firstElementType.isArray() ? "" : "") +
+                                        "', but got '" + currentElementType.getName() +
+                                        (currentElementType.isArray() ? "" : "") + "'",
+                                null
+                        ));
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
 
     private boolean isIntType(Type type) {
         return "int".equals(type.getName()) && !type.isArray();
@@ -362,7 +390,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                 return true;
             }
 
-            // Check if target type is an imported class (assuming compatibility)
+            // Check if target type is an imported class (assuming compatibility for now)
             if (table.getImports().contains(targetType.getName())) {
                 return true;
             }
