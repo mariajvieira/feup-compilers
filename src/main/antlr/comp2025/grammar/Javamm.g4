@@ -38,8 +38,7 @@ qualifiedName
     ;
 
 classDecl
-    : CLASS name=ID (EXTENDS superClass=ID)?
-      '{' varDecl* methodDecl* '}'
+    : CLASS name=ID (EXTENDS superClass=ID)? '{' (varDecl)* (methodDecl)* '}'
     ;
 
 varDecl
@@ -55,8 +54,8 @@ type
     ;
 
 methodDecl locals[boolean isPublic=false, boolean isStatic=false]
-    : (PUBLIC {$isPublic=true;})? 
-      (STATIC {$isStatic=true;})? 
+    : (PUBLIC {$isPublic=true;})?
+      (STATIC {$isStatic=true;})?
       type name=ID
       '(' paramList? ')'
       '{' varDecl* stmt* '}'
@@ -73,7 +72,7 @@ param
 
 stmt
     : '{' stmt* '}'                           # Block
-    | 'if' '(' expr ')' stmt 
+    | 'if' '(' expr ')' stmt
       ('else' stmt)?                          # IfStmt
     | 'while' '(' expr ')' stmt               # WhileStmt
     | RETURN expr? ';'                        # ReturnStmt
@@ -82,48 +81,23 @@ stmt
     ;
 
 expr
-    : left=expr '||' right=expr2              # Or
-    | expr2                                   # Expr2Pass
-    ;
-
-expr2
-    : left=expr2 '&&' right=expr3             # And
-    | expr3                                   # Expr3Pass
-    ;
-
-expr3
-    : left=expr3 op=('<'|'>'|'<='|'>=') right=expr4    # Compare
-    | expr4                                             # Expr4Pass
-    ;
-
-expr4
-    : left=expr4 op=('+'|'-') right=expr5     # AddSub
-    | expr5                                   # Expr5Pass
-    ;
-
-expr5
-    : left=expr5 op=('*'|'/') right=expr6     # MulDiv
-    | expr6                                   # Expr6Pass
-    ;
-
-expr6
-    : '!' expr6                               # Not
-    | NEW type '[' expr ']'                   # NewArray
-    | NEW ID '(' ')'                          # NewObject
-    | atom                                    # AtomExpr
-    ;
-
-atom
-    : INTEGER                                 # Int
-    | TRUE                                    # True
-    | FALSE                                   # False
-    | THIS                                    # This
-    | name=ID                                 # Id
+    : '!' expr                                # Not
+    | expr op=('<'|'>'|'<='|'>='|'=='|'!=') expr  # Compare
+    | expr '&&' expr             # And
+    | expr '||' expr              # Or
+    | expr op=('*'|'/') expr     # MulDiv
+    | expr op=('+'|'-') expr     # AddSub
+    | expr '[' expr ']'                       # ArrayAccess
+    | NEW name=INT '[' expr ']'                   # NewArray
+    | expr '.' 'length'                     # Length
+    | expr '.' name=ID '(' (expr(',' expr)*) ? ')'  #MethodCall
+    | NEW name=ID '(' ')'                          # NewObject
     | '(' expr ')'                            # Parenthesis
+    | name=INTEGER                               # Int
+    | name = (TRUE|FALSE)                     # Boolean
+    | name=ID                                 # Id
+    | name=THIS                                # This
     | '[' arrayInit? ']'                      # ArrayLiteral
-    | atom '.' ID '(' args? ')'               # MethodCall
-    | atom '.' ID                             # FieldAccess
-    | atom '[' expr ']'                       # ArrayAccess
     ;
 
 args
