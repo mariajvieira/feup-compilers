@@ -45,8 +45,8 @@ varDecl
     : type name=ID ';'
     ;
 
-type
-    : name=INT ('[' ']')?       // int, int[]
+type locals[boolean isArray=false]
+    : name=INT ('[' ']' {$isArray=true;})?       // int, int[]
     | name=BOOLEAN              // boolean
     | name=STRING ('[' ']')?    // String, String[]
     | name=ID                   // class name

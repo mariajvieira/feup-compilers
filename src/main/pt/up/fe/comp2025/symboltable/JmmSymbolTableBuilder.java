@@ -79,9 +79,16 @@ public class JmmSymbolTableBuilder {
     private Map<String, Type> buildReturnTypes(JmmNode classDecl) {
         Map<String, Type> map = new HashMap<>();
 
+        for (var method : classDecl.getChildren(METHOD_DECL)) {
+            var methodName = method.get("name");
+            var returnTypeNode = method.getChild(0); // O primeiro filho deve ser o tipo de retorno
+            var returnType = TypeUtils.convertType(returnTypeNode);
+            map.put(methodName, returnType);
+        }
 
         return map;
     }
+
 
     private Map<String, List<Symbol>> buildParams(JmmNode classDecl) {
         Map<String, List<Symbol>> map = new HashMap<>();
@@ -108,6 +115,7 @@ public class JmmSymbolTableBuilder {
 
             map.put(name, params);
         }
+        System.out.println("MAP" + map);
         return map;
     }
 
