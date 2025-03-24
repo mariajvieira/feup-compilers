@@ -17,21 +17,13 @@ import java.util.stream.Collectors;
 
 import static pt.up.fe.comp2025.ast.Kind.*;
 
-public class JmmSymbolTableBuilder {
 
+public class JmmSymbolTableBuilder {
     private List<Report> reports;
+    private String currentMethod;
 
     public List<Report> getReports() {
         return reports;
-    }
-
-    private static Report newError(JmmNode node, String message) {
-        return Report.newError(
-                Stage.SEMANTIC,
-                node.getLine(),
-                node.getColumn(),
-                message,
-                null);
     }
 
     public JmmSymbolTable build(JmmNode root) {
@@ -43,9 +35,7 @@ public class JmmSymbolTableBuilder {
                 .orElseThrow(() -> new IllegalArgumentException("Class declaration not found"));
 
         var imports = buildImports(root);
-
         String className = classDecl.get("name");
-
         String superClass = classDecl.hasAttribute("superClass") ? classDecl.get("superClass") : null;
 
         var fields = buildFields(classDecl);
@@ -54,7 +44,56 @@ public class JmmSymbolTableBuilder {
         var params = buildParams(classDecl);
         var locals = buildLocals(classDecl);
 
+        // Check variable declarations in method bodies
+        for (JmmNode node : classDecl.getChildren()) {
+            if (node.getKind().equals("MethodDecl")) {
+                currentMethod = node.get("name");
+                checkNode(node, params.get(currentMethod), locals.get(currentMethod), fields);
+            }
+        }
+
         return new JmmSymbolTable(className, superClass, imports, fields, methods, returnTypes, params, locals);
+    }
+
+    private void checkNode(JmmNode node, List<Symbol> methodParams, List<Symbol> localVars, List<Symbol> fields) {
+        // Check for undeclared variables
+        if (node.getKind().equals("Id")) {
+            String varName = node.get("name");
+            boolean isDeclared = false;
+
+            // Check method parameters
+            if (methodParams != null) {
+                isDeclared = methodParams.stream()
+                        .anyMatch(p -> p.getName().equals(varName));
+            }
+
+            // Check local variables
+            if (!isDeclared && localVars != null) {
+                isDeclared = localVars.stream()
+                        .anyMatch(l -> l.getName().equals(varName));
+            }
+
+            // Check fields
+            if (!isDeclared) {
+                isDeclared = fields.stream()
+                        .anyMatch(f -> f.getName().equals(varName));
+            }
+
+            if (!isDeclared) {
+                reports.add(Report.newError(
+                        Stage.SEMANTIC,
+                        node.getLine(),
+                        node.getColumn(),
+                        "Variable '" + varName + "' not declared",
+                        null
+                ));
+            }
+        }
+
+        // Recursively check children
+        for (JmmNode child : node.getChildren()) {
+            checkNode(child, methodParams, localVars, fields);
+        }
     }
 
     private List<String> buildImports(JmmNode root) {
