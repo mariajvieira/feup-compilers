@@ -29,7 +29,10 @@ public class JmmAnalysisImpl implements JmmAnalysis {
      * @return
      */
     private List<AnalysisVisitor> buildPasses(SymbolTable table) {
-        return List.of(new UndeclaredVariable());
+        return List.of(
+                new UndeclaredVariable(),
+                new TypeCheckingVisitor()
+        );
     }
 
     @Override
