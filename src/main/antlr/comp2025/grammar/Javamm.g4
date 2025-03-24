@@ -96,6 +96,11 @@ stmt
     | 'while' '(' expr ')' stmt               # WhileStmt
     | target=expr '=' value=expr ';'          # AssignStmt
     | expr ';'                                # ExprStmt
+    | returnStmt                              #RetStmt
+    ;
+
+returnStmt
+    : RETURN expr? ';'
     ;
 
 // Expression types with enhanced type checking
