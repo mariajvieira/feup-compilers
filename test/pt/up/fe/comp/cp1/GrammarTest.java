@@ -252,4 +252,168 @@ public class GrammarTest {
         TestUtils.parseVerbose("[10, 20, 30]", EXPRESSION);
     }
 
+
+    // Given tests: 44
+
+
+    // ------------------------------------------------ //
+    //                  Additional tests: 29            //
+    // ------------------------------------------------ //
+
+    @Test
+    public void testBooleanVarargsMethod() {
+        TestUtils.parseVerbose("int foo(boolean... flags) { if(flags[0]) return 1; else return 0; }", INSTANCE_METHOD);
+    }
+
+    @Test
+    public void testEmptyArrayLiteral() {
+        TestUtils.parseVerbose("int[] getArray() { return []; }", INSTANCE_METHOD);
+    }
+
+    @Test
+    public void testComplexExpression() {
+        String expr = "((10 + 20) * (30 - 5)) / 2 && a < b || !false";
+        TestUtils.parseVerbose(expr, EXPRESSION);
+    }
+
+    @Test
+    public void testNewObjectAndArray() {
+        String expr = "new Person()";
+        TestUtils.parseVerbose(expr, EXPRESSION);
+        expr = "new int[100]";
+        TestUtils.parseVerbose(expr, EXPRESSION);
+    }
+
+    @Test
+    public void testSimpleImport() {
+        TestUtils.parseVerbose("import foo;", "importDecl");
+    }
+
+    @Test
+    public void testSimpleClass() {
+        TestUtils.parseVerbose("class A {}", "classDecl");
+    }
+
+    @Test
+    public void testSimpleVarDecl() {
+        TestUtils.parseVerbose("class A { int a; }", "classDecl");
+    }
+
+    @Test
+    public void testSimpleMethod() {
+        TestUtils.parseVerbose("int main() { return 0; }", "methodDecl");
+    }
+
+    @Test
+    public void testSimpleExpression() {
+        TestUtils.parseVerbose("1 + 2", "expr");
+    }
+
+    @Test
+    public void testComplexMethodCallChainNew() {
+        TestUtils.parseVerbose("a.b(10, x).c().d(e.f(3)[1]).g()", "expr");
+    }
+
+    @Test
+    public void testNestedArrayLiteral() {
+        TestUtils.parseVerbose("int[] init() { return [[1+2, 3*4], [5-1, 8/2]]; }", "methodDecl");
+    }
+
+    @Test
+    public void testMixedOperatorsExpression() {
+        TestUtils.parseVerbose("(a + b*(c - d)) / e < (f + g) && !h || i == j", "expr");
+    }
+
+    @Test
+    public void testNestedBlocksAssignment() {
+        TestUtils.parseVerbose("{ { x=10; y=x+5; } z=y*2; }", "stmt");
+    }
+
+    @Test
+    public void testMethodReturnWithoutExpression() {
+        TestUtils.parseVerbose("void doNothing() { return; }", INSTANCE_METHOD);
+    }
+
+    @Test
+    public void testInstanceMethodMixedParams() {
+        TestUtils.parseVerbose("int sum(int a, int b, int... extras) { return a + b; }", INSTANCE_METHOD);
+    }
+
+    @Test
+    public void testNestedIfElseNoBraces() {
+        TestUtils.parseVerbose("if(a==b) if(c==d) e=f; else e=g;", STATEMENT);
+    }
+
+    @Test
+    public void testChainedNotOperators() {
+        TestUtils.parseVerbose("!!true", EXPRESSION);
+    }
+
+    @Test
+    public void testComplexArithmeticLogicalExpression() {
+        TestUtils.parseVerbose("(((a+b)*c)/d - e) && f || (g < h)", EXPRESSION);
+    }
+
+    @Test
+    public void testArrayAccessOfMethodCall() {
+        TestUtils.parseVerbose("foo.bar()[bar].length", EXPRESSION);
+    }
+
+    @Test
+    public void testComplexClassDeclaration() {
+        String program = "class Complex extends Base { "
+                + "int x; boolean y; "
+                + "int init(int a, int b) { x = a + b * 2; y = x > 0; return x; } "
+                + "}";
+        TestUtils.parseVerbose(program, "classDecl");
+    }
+
+    @Test
+    public void testNestedMethodCalls() {
+        TestUtils.parseVerbose("obj.getA().getB().getC()", "expr");
+    }
+
+    @Test
+    public void testArrayLiteralWithMethodCalls() {
+        TestUtils.parseVerbose("[foo.bar(), bar.baz()]", "expr");
+    }
+
+    @Test
+    public void testArithmeticLogicalExpression() {
+        String expr = "1 + 2 * 3 - 4 / 2 < 10 && !false";
+        TestUtils.parseVerbose(expr, "expr");
+    }
+
+    @Test
+    public void testStmtComplexAssignment() {
+        // Assignment where the target is an array access using nested array access.
+        TestUtils.parseVerbose("a[b[0]] = 10;", "stmt");
+    }
+
+    @Test
+    public void testExprNestedParentheses() {
+        TestUtils.parseVerbose("((a + (b)))", "expr");
+    }
+
+    @Test
+    public void testMethodWithMixedParamsAndVarargs() {
+        String method = "int compute(int a, int b, int... extras) { return a + b; }";
+        TestUtils.parseVerbose(method, "methodDecl");
+    }
+
+    @Test
+    public void testIfWithoutElseBrackets() {
+        TestUtils.parseVerbose("if(a) if(b) c; else d;", "stmt");
+    }
+
+    @Test
+    public void testWhileWithBlock() {
+        TestUtils.parseVerbose("while(a < b) { x = x + 1; y = y - 1; }", "stmt");
+    }
+
+    @Test
+    public void testImportDeclarationWithQualifiedName() {
+        TestUtils.parseVerbose("import pt.up.fe.comp.project;", "importDecl");
+    }
+
 }
