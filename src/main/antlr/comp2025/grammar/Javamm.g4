@@ -55,8 +55,12 @@ type locals[boolean isArray=false]
     : name=INT ('[' ']' {$isArray=true;})?       // int, int[]
     | name=BOOLEAN ('[' ']')?                   // boolean, boolean[]
     | name=STRING ('[' ']')?                    // String, String[]
-    | name=ID                                   // class name
+    | name=ID ('[' ']' {$isArray=true;})?      // class name or array
     | name=VOID                                 // void (for methods)
+    | name=INT '...' {$isArray=true;}           // int varargs
+    | name=BOOLEAN '...' {$isArray=true;}       // boolean varargs
+    | name=STRING '...' {$isArray=true;}        // String varargs
+    | name=ID '...' {$isArray=true;}            // class varargs
     ;
 
 methodDecl locals[boolean isPublic=false, boolean isStatic=false]

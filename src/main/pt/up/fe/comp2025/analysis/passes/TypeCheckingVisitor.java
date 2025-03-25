@@ -289,16 +289,14 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
     }
 
     private Void visitMethodCall(JmmNode methodCall, SymbolTable table) {
-        JmmNode caller = methodCall.getChildren().getFirst();
+        JmmNode caller = methodCall.getChildren().get(0);
         String methodName = methodCall.get("name");
         List<JmmNode> args = methodCall.getChildren().subList(1, methodCall.getChildren().size());
 
         Type callerType = typeUtils.getExprType(caller);
 
-        // this
         if (callerType.getName().equals(table.getClassName())) {
             if (!table.getMethods().contains(methodName)) {
-                // extends another class ---> method defined in the superclass
                 if (table.getSuper() == null) {
                     addReport(Report.newError(
                             Stage.SEMANTIC,
@@ -325,23 +323,20 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                         ));
                     } else {
                         for (int i = 0; i < parameters.size() - 1; i++) {
-                            if (i < args.size()) {
-                                Type argType = typeUtils.getExprType(args.get(i));
-                                Type paramType = parameters.get(i).getType();
+                            Type argType = typeUtils.getExprType(args.get(i));
+                            Type paramType = parameters.get(i).getType();
 
-                                if (!isTypeCompatible(paramType, argType, table)) {
-                                    addReport(Report.newError(
-                                            Stage.SEMANTIC,
-                                            args.get(i).getLine(),
-                                            args.get(i).getColumn(),
-                                            "Incompatible argument type for parameter " + (i + 1),
-                                            null
-                                    ));
-                                }
+                            if (!isTypeCompatible(paramType, argType, table)) {
+                                addReport(Report.newError(
+                                        Stage.SEMANTIC,
+                                        args.get(i).getLine(),
+                                        args.get(i).getColumn(),
+                                        "Incompatible argument type for parameter " + (i + 1),
+                                        null
+                                ));
                             }
                         }
 
-                        // Check varargs parameters
                         Type varargType = new Type(parameters.get(parameters.size() - 1).getType().getName(), false);
                         for (int i = parameters.size() - 1; i < args.size(); i++) {
                             Type argType = typeUtils.getExprType(args.get(i));
@@ -357,7 +352,6 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                         }
                     }
                 } else {
-                    // method call without varargs
                     if (args.size() != parameters.size()) {
                         addReport(Report.newError(
                                 Stage.SEMANTIC,
@@ -389,8 +383,6 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
 
         return null;
     }
-
-
 
     private Void visitArrayLiteral(JmmNode arrayLiteral, SymbolTable table) {
         if (!arrayLiteral.getChildren().isEmpty()) {

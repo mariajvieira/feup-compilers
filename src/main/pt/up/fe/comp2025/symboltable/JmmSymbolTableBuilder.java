@@ -156,7 +156,6 @@ public class JmmSymbolTableBuilder {
 
             map.put(name, params);
         }
-        System.out.println("MAP" + map);
         return map;
     }
 
