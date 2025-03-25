@@ -27,22 +27,19 @@ COMMENT : '//' ~[\r\n]* -> skip ;
 MULTILINE_COMMENT : '/*' .*? '*/' -> skip ;
 WS : [ \t\n\r\f]+ -> skip ;
 
-// Top-level program structure
+
 program
     : (importDecl)* classDecl EOF
     ;
 
-// Import declaration
 importDecl
     : IMPORT qualifiedName ';'
     ;
 
-// Qualified name for imports and class references
 qualifiedName
     : ID ('.' ID)*
     ;
 
-// Class declaration
 classDecl
     : CLASS name=ID (EXTENDS superClass=ID)? '{' 
         (varDecl)* 
@@ -50,12 +47,10 @@ classDecl
       '}'
     ;
 
-// Variable declaration
 varDecl
     : type name=ID ';'
     ;
 
-// Type specification with array support
 type locals[boolean isArray=false]
     : name=INT ('[' ']' {$isArray=true;})?       // int, int[]
     | name=BOOLEAN ('[' ']')?                   // boolean, boolean[]
@@ -64,7 +59,6 @@ type locals[boolean isArray=false]
     | name=VOID                                 // void (for methods)
     ;
 
-// Method declaration
 methodDecl locals[boolean isPublic=false, boolean isStatic=false]
     : (PUBLIC {$isPublic=true;})?
       (STATIC {$isStatic=true;})?
@@ -77,18 +71,15 @@ methodDecl locals[boolean isPublic=false, boolean isStatic=false]
       '}'
     ;
 
-// Parameter list
 paramList
     : param (',' param)*
     ;
 
-// Parameter with support for varargs
 param
     : type name=ID                  // Regular parameter
     | type '...' name=ID            // Varargs parameter
     ;
 
-// Statement types
 stmt
     : '{' stmt* '}'                           # Block
     | 'if' '(' expr ')' stmt
@@ -103,7 +94,6 @@ returnStmt
     : RETURN expr? ';'
     ;
 
-// Expression types with enhanced type checking
 expr
     : '!' expr                                # Not
     | expr op=('<'|'>'|'<='|'>='|'=='|'!=') expr  # Compare
@@ -124,7 +114,6 @@ expr
     | '[' arrayInit? ']'                      # ArrayLiteral
     ;
 
-// Array initialization
 arrayInit
     : expr (',' expr)*
     ;

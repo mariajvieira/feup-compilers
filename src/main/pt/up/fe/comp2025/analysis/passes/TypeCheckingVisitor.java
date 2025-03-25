@@ -102,7 +102,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
         Type leftType = typeUtils.getExprType(left);
         Type rightType = typeUtils.getExprType(right);
 
-        // For comparison operations '<', '>', '<=', '>=' operands must be of type int
+        // '<', '>', '<=', '>=' ---->  int
         if (compareNode.get("op").matches("<|>|<=|>=")) {
             if (!isIntType(leftType)) {
                 addReport(Report.newError(
@@ -126,7 +126,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                 ));
             }
         }
-        // For equality operations '==', '!=' operands must have compatible types
+        //  '==', '!='
         else {
             if (!isTypeCompatible(leftType, rightType, table)) {
                 addReport(Report.newError(
@@ -292,10 +292,10 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
 
         Type callerType = typeUtils.getExprType(caller);
 
-        // If the caller is of type this, check if the method exists in the current class
+        // this
         if (callerType.getName().equals(table.getClassName())) {
             if (!table.getMethods().contains(methodName)) {
-                // If the class extends another class, we assume the method is defined in the superclass
+                // extends another class ---> method defined in the superclass
                 if (table.getSuper() == null) {
                     addReport(Report.newError(
                             Stage.SEMANTIC,
@@ -306,33 +306,78 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
                     ));
                 }
             } else {
-                // Check argument types
                 List<Symbol> parameters = table.getParameters(methodName);
-                if (args.size() != parameters.size()) {
-                    addReport(Report.newError(
-                            Stage.SEMANTIC,
-                            methodCall.getLine(),
-                            methodCall.getColumn(),
-                            "Method '" + methodName + "' called with incorrect number of arguments: expected " +
-                                    parameters.size() + ", got " + args.size(),
-                            null
-                    ));
-                } else {
-                    for (int i = 0; i < args.size(); i++) {
-                        Type argType = typeUtils.getExprType(args.get(i));
-                        Type paramType = parameters.get(i).getType();
 
-                        if (!isTypeCompatible(paramType, argType, table)) {
-                            addReport(Report.newError(
-                                    Stage.SEMANTIC,
-                                    args.get(i).getLine(),
-                                    args.get(i).getColumn(),
-                                    "Incompatible argument type for parameter " + (i + 1) +
-                                            ": expected '" + paramType.getName() +
-                                            (paramType.isArray() ? "" : "") + "', but got '" +
-                                            argType.getName() + (argType.isArray() ? "" : "") + "'",
-                                    null
-                            ));
+                boolean hasVarargs = !parameters.isEmpty() &&
+                        parameters.get(parameters.size() - 1).getType().isArray();
+
+                if (hasVarargs) {
+                    if (args.size() < parameters.size() - 1) {
+                        addReport(Report.newError(
+                                Stage.SEMANTIC,
+                                methodCall.getLine(),
+                                methodCall.getColumn(),
+                                "Method '" + methodName + "' called with too few arguments",
+                                null
+                        ));
+                    } else {
+                        for (int i = 0; i < parameters.size() - 1; i++) {
+                            if (i < args.size()) {
+                                Type argType = typeUtils.getExprType(args.get(i));
+                                Type paramType = parameters.get(i).getType();
+
+                                if (!isTypeCompatible(paramType, argType, table)) {
+                                    addReport(Report.newError(
+                                            Stage.SEMANTIC,
+                                            args.get(i).getLine(),
+                                            args.get(i).getColumn(),
+                                            "Incompatible argument type for parameter " + (i + 1),
+                                            null
+                                    ));
+                                }
+                            }
+                        }
+
+                        // Check varargs parameters
+                        Type varargType = new Type(parameters.get(parameters.size() - 1).getType().getName(), false);
+                        for (int i = parameters.size() - 1; i < args.size(); i++) {
+                            Type argType = typeUtils.getExprType(args.get(i));
+                            if (!isTypeCompatible(varargType, argType, table)) {
+                                addReport(Report.newError(
+                                        Stage.SEMANTIC,
+                                        args.get(i).getLine(),
+                                        args.get(i).getColumn(),
+                                        "Incompatible argument type for varargs parameter",
+                                        null
+                                ));
+                            }
+                        }
+                    }
+                } else {
+                    // method call without varargs
+                    if (args.size() != parameters.size()) {
+                        addReport(Report.newError(
+                                Stage.SEMANTIC,
+                                methodCall.getLine(),
+                                methodCall.getColumn(),
+                                "Method '" + methodName + "' called with incorrect number of arguments: expected " +
+                                        parameters.size() + ", got " + args.size(),
+                                null
+                        ));
+                    } else {
+                        for (int i = 0; i < args.size(); i++) {
+                            Type argType = typeUtils.getExprType(args.get(i));
+                            Type paramType = parameters.get(i).getType();
+
+                            if (!isTypeCompatible(paramType, argType, table)) {
+                                addReport(Report.newError(
+                                        Stage.SEMANTIC,
+                                        args.get(i).getLine(),
+                                        args.get(i).getColumn(),
+                                        "Incompatible argument type for parameter " + (i + 1),
+                                        null
+                                ));
+                            }
                         }
                     }
                 }
@@ -341,7 +386,6 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
 
         return null;
     }
-
     private Void visitArrayLiteral(JmmNode arrayLiteral, SymbolTable table) {
         if (!arrayLiteral.getChildren().isEmpty()) {
             JmmNode arrayInitNode = arrayLiteral.getChildren().get(0);
@@ -382,20 +426,20 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
             return true;
         }
 
-        // Assignment to object types: check if value type is a subclass of target type
         if (!targetType.isArray() && !valueType.isArray()) {
-            // Check if value type extends target type
             if (valueType.getName().equals(table.getClassName()) &&
                     targetType.getName().equals(table.getSuper())) {
                 return true;
             }
 
-            // Check if target type is an imported class (assuming compatibility for now)
-            if (table.getImports().contains(targetType.getName())) {
+            if (table.getImports().stream().anyMatch(imp -> imp.endsWith("." + targetType.getName()) || imp.equals(targetType.getName())) &&
+                    table.getImports().stream().anyMatch(imp -> imp.endsWith("." + valueType.getName()) || imp.equals(valueType.getName()))) {
                 return true;
             }
         }
 
         return false;
     }
+
+
 }
