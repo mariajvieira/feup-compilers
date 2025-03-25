@@ -1,0 +1,21 @@
+import io;
+import util.List;
+
+class FullTest {
+    int field1;
+    boolean field2;
+    int[] fieldArr;
+
+    int method1(int a, boolean b) {
+        int local1;
+        boolean local2;
+        local1 = a + 10;
+        return local1;
+    }
+
+    boolean method2(boolean c) {
+        boolean local3;
+        local3 = c && true;
+        return local3;
+    }
+}
