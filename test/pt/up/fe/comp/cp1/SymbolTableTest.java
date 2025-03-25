@@ -3,9 +3,13 @@ package pt.up.fe.comp.cp1;
 import org.junit.Test;
 import pt.up.fe.comp.TestUtils;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
+import pt.up.fe.comp.jmm.analysis.table.Symbol;
 import pt.up.fe.specs.util.SpecsIo;
 
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test variable lookup.
@@ -129,5 +133,41 @@ public class SymbolTableTest {
         assertEquals("Parameter 1", "int", parameters.get(0).getType().getName());
         assertEquals("Parameter 2", "boolean", parameters.get(1).getType().getName());
         assertEquals("Parameter 3", "Parameters", parameters.get(2).getType().getName());
+    }
+
+
+
+    // ---------------------------------------------//
+    //              ADDITIONAL TESTS                //
+    // ---------------------------------------------//
+
+    @Test
+    public void testMultipleMethodsSymbolTable() {
+        var semantics = test("symboltable/MultipleMethods.jmm", false);
+        assertEquals("MultipleMethods", semantics.getSymbolTable().getClassName());
+        assertEquals(1, semantics.getSymbolTable().getFields().size());
+        List<String> methods = semantics.getSymbolTable().getMethods();
+        assertTrue(methods.contains("method1"));
+        assertTrue(methods.contains("method2"));
+        List<Symbol> paramsMethod1 = semantics.getSymbolTable().getParameters("method1");
+        assertEquals(1, paramsMethod1.size());
+        List<Symbol> paramsMethod2 = semantics.getSymbolTable().getParameters("method2");
+        assertEquals(2, paramsMethod2.size());
+    }
+
+    @Test
+    public void testNoMethodSymbolTable() {
+        var semantics = test("symboltable/NoMethod.jmm", false);
+        assertEquals("NoMethod", semantics.getSymbolTable().getClassName());
+        assertEquals(2, semantics.getSymbolTable().getFields().size());
+        assertTrue(semantics.getSymbolTable().getMethods().isEmpty());
+    }
+
+    @Test
+    public void testSymbolTableAttributes() {
+        var semantics = test("symboltable/NoMethod.jmm", false);
+        var symbolTable = semantics.getSymbolTable();
+        symbolTable.putObject("TestKey", "TestValue");
+        assertEquals("TestValue", symbolTable.getObject("TestKey"));
     }
 }

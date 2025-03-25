@@ -51,7 +51,8 @@ public class TypeUtils {
     public Type getExprType(JmmNode expr) {
         String kind = expr.getKind();
         Type result = switch (kind) {
-            case "AddSub", "MulDiv", "Compare" -> newIntType();
+            case "AddSub", "MulDiv" -> newIntType();
+            case "Compare" -> newBooleanType();
             case "And", "Or", "Not" -> newBooleanType();
             case "Int" -> newIntType();
             case "Boolean" -> newBooleanType();
@@ -89,8 +90,6 @@ public class TypeUtils {
             case "Parenthesis" -> getExprType(expr.getChildren().get(0));
             default -> new Type("unknown", false);
         };
-        System.out.println("DEBUG: Expression with kind \\`" + kind + "\\` returns type \\`" + result.getName()
-                + (result.isArray() ? "[]" : "") + "\\`");
         return result;
     }
     private Type getTypeFromSymbolTable(String varName, String methodSignature) {
@@ -109,7 +108,6 @@ public class TypeUtils {
     private boolean isImported(String typeName) {
         boolean imported = table.getImports().stream()
                 .anyMatch(imp -> imp.equals(typeName) || imp.endsWith("." + typeName));
-        System.out.println("DEBUG: Type \\`" + typeName + "\\` imported? " + imported);
         return imported;
     }
 }

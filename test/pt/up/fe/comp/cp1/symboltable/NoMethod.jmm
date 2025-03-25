@@ -1,0 +1,4 @@
+class NoMethod {
+    int x;
+    boolean y;
+}

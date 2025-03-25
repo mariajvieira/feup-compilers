@@ -1,0 +1,15 @@
+class MultipleMethods {
+    int field;
+
+    int method1(int a) {
+        int local;
+        local = a + field;
+        return local;
+    }
+
+    boolean method2(boolean b, int c) {
+        boolean flag;
+        flag = b && (c > 0);
+        return flag;
+    }
+}
