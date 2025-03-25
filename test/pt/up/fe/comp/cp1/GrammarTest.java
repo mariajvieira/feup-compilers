@@ -257,7 +257,7 @@ public class GrammarTest {
 
 
     // ------------------------------------------------ //
-    //                  Additional tests: 29            //
+    //                  Additional tests: 36            //
     // ------------------------------------------------ //
 
     @Test
@@ -414,6 +414,41 @@ public class GrammarTest {
     @Test
     public void testImportDeclarationWithQualifiedName() {
         TestUtils.parseVerbose("import pt.up.fe.comp.project;", "importDecl");
+    }
+
+    @Test
+    public void testExprNotEquals() {
+        TestUtils.parseVerbose("a != b", EXPRESSION);
+    }
+
+    @Test
+    public void testExprEquals() {
+        TestUtils.parseVerbose("a == b", EXPRESSION);
+    }
+
+    @Test
+    public void testExprGreaterThan() {
+        TestUtils.parseVerbose("a > b", EXPRESSION);
+    }
+
+    @Test
+    public void testExprGreaterEqual() {
+        TestUtils.parseVerbose("a >= b", EXPRESSION);
+    }
+
+    @Test
+    public void testComplexMixedOperations() {
+        TestUtils.parseVerbose("((a + b * c) - d / e) >= (f - g) && (h < i || j == k)", EXPRESSION);
+    }
+
+    @Test
+    public void testNewArrayWithComplexExpression() {
+        TestUtils.parseVerbose("new int[(a + b * 2) - c]", EXPRESSION);
+    }
+
+    @Test
+    public void testArrayAccessWithComplexIndex() {
+        TestUtils.parseVerbose("array[(i + 1) * 2 - 3]", EXPRESSION);
     }
 
 }
