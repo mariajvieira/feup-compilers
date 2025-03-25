@@ -286,7 +286,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
     }
 
     private Void visitMethodCall(JmmNode methodCall, SymbolTable table) {
-        JmmNode caller = methodCall.getChildren().get(0);
+        JmmNode caller = methodCall.getChildren().getFirst();
         String methodName = methodCall.get("name");
         List<JmmNode> args = methodCall.getChildren().subList(1, methodCall.getChildren().size());
 
@@ -386,6 +386,9 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
 
         return null;
     }
+
+
+
     private Void visitArrayLiteral(JmmNode arrayLiteral, SymbolTable table) {
         if (!arrayLiteral.getChildren().isEmpty()) {
             JmmNode arrayInitNode = arrayLiteral.getChildren().get(0);
@@ -421,25 +424,45 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
     }
 
     private boolean isTypeCompatible(Type targetType, Type valueType, SymbolTable table) {
+        System.out.println("Checking compatibility: target=" + targetType.getName() +
+                (targetType.isArray() ? "[]" : "") +
+                ", value=" + valueType.getName() +
+                (valueType.isArray() ? "[]" : ""));
+
         // Same type
         if (targetType.getName().equals(valueType.getName()) && targetType.isArray() == valueType.isArray()) {
+            System.out.println("  → MATCH: Exact same type");
             return true;
         }
 
         if (!targetType.isArray() && !valueType.isArray()) {
-            if (valueType.getName().equals(table.getClassName()) &&
-                    targetType.getName().equals(table.getSuper())) {
+            if (isImported(targetType.getName(), table) && isImported(valueType.getName(), table)) {
+                System.out.println("  → MATCH: Both types are imported");
+                System.out.println("    Target imported: " + isImported(targetType.getName(), table));
+                System.out.println("    Value imported: " + isImported(valueType.getName(), table));
                 return true;
             }
 
-            if (table.getImports().stream().anyMatch(imp -> imp.endsWith("." + targetType.getName()) || imp.equals(targetType.getName())) &&
-                    table.getImports().stream().anyMatch(imp -> imp.endsWith("." + valueType.getName()) || imp.equals(valueType.getName()))) {
+            if (valueType.getName().equals(table.getClassName()) &&
+                    targetType.getName().equals(table.getSuper())) {
+                System.out.println("  → MATCH: Value is current class, target is superclass");
                 return true;
             }
         }
 
+        if (isImported(targetType.getName(), table) && isImported(valueType.getName(), table)) {
+            System.out.println("  → MATCH: Both types are imported ----- IF NOVO ----- ");
+            System.out.println("    Target imported: " + isImported(targetType.getName(), table));
+            System.out.println("    Value imported: " + isImported(valueType.getName(), table));
+            return true;
+        }
+
+        System.out.println("  → NO MATCH: Types are incompatible");
         return false;
     }
 
-
+    private boolean isImported(String typeName, SymbolTable table) {
+        return table.getImports().stream().anyMatch(imp ->
+                imp.endsWith("." + typeName) || imp.equals(typeName));
+    }
 }

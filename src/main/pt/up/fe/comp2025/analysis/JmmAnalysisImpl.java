@@ -33,6 +33,7 @@ public class JmmAnalysisImpl implements JmmAnalysis {
                 new UndeclaredVariable(),
                 new TypeCheckingVisitor()
         );
+
     }
 
     @Override
