@@ -258,4 +258,41 @@ public class SymbolTableTest {
         assertNotNull(local3);
         assertEquals("boolean", local3.getType().getName());
     }
+    @Test
+    public void testVarargsMethod() {
+        var semantics = test("symboltable/Varargs.jmm", false);
+        var st = semantics.getSymbolTable();
+        var methods = st.getMethods();
+        assertTrue(methods.contains("varargs"));
+
+        List<Symbol> parameters = st.getParameters("varargs");
+        assertEquals(1, parameters.size());
+        assertTrue(parameters.get(0).getType().isArray());
+        assertEquals("int", parameters.get(0).getType().getName());
+    }
+
+    @Test
+    public void testEmptyClass() {
+        var semantics = test("symboltable/EmptyClass.jmm", false);
+        var st = semantics.getSymbolTable();
+        assertTrue(st.getImports().isEmpty());
+        assertEquals("EmptyClass", st.getClassName());
+        assertNull(st.getSuper());
+        assertTrue(st.getFields().isEmpty());
+        assertTrue(st.getMethods().isEmpty());
+    }
+
+
+    @Test
+    public void testMethodReturnTypes() {
+        var semantics = test("symboltable/ReturnTypes.jmm", false);
+        var st = semantics.getSymbolTable();
+
+        assertEquals(new Type("void", false), st.getReturnType("voidMethod"));
+        assertEquals(new Type("int", true), st.getReturnType("arrayMethod"));
+        assertEquals(new Type("ReturnTypes", false), st.getReturnType("objectMethod"));
+    }
+
+
+
 }

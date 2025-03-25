@@ -1,0 +1,12 @@
+class ReturnTypes {
+    public void voidMethod() {
+    }
+
+    public int[] arrayMethod() {
+        return new int[10];
+    }
+
+    public ReturnTypes objectMethod() {
+        return this;
+    }
+}

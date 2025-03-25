@@ -105,8 +105,12 @@ public class JmmSymbolTableBuilder {
 
     private List<Symbol> buildFields(JmmNode classDecl) {
         return classDecl.getChildren(VAR_DECL).stream()
-                .map(varDecl -> new Symbol(TypeUtils.convertType(varDecl.getChild(0)), varDecl.get("name")))
-                .toList();
+                .map(varDecl -> {
+                    var typeNode = varDecl.getChild(0);
+                    var type = TypeUtils.convertType(typeNode);
+                    return new Symbol(type, varDecl.get("name"));
+                })
+                .collect(Collectors.toList());
     }
 
     private Map<String, Type> buildReturnTypes(JmmNode classDecl) {
@@ -156,12 +160,23 @@ public class JmmSymbolTableBuilder {
 
         for (var method : classDecl.getChildren(METHOD_DECL)) {
             var name = method.get("name");
-            var locals = method.getChildren(VAR_DECL).stream()
-                    .map(varDecl -> new Symbol(TypeUtils.convertType(varDecl.getChild(0)), varDecl.get("name")))
-                    .toList();
+            List<Symbol> locals = new ArrayList<>();
+            collectLocalVars(method, locals);
             map.put(name, locals);
         }
         return map;
+    }
+
+    private void collectLocalVars(JmmNode node, List<Symbol> locals) {
+        if (node.getKind().equals("VarDecl")) {
+            locals.add(new Symbol(
+                    TypeUtils.convertType(node.getChild(0)),
+                    node.get("name")
+            ));
+        }
+        for (JmmNode child : node.getChildren()) {
+            collectLocalVars(child, locals);
+        }
     }
 
     private List<String> buildMethods(JmmNode classDecl) {
