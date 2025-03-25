@@ -4,12 +4,13 @@ import org.junit.Test;
 import pt.up.fe.comp.TestUtils;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
 import pt.up.fe.comp.jmm.analysis.table.Symbol;
+import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.specs.util.SpecsIo;
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
 
 /**
  * Test variable lookup.
@@ -169,5 +170,92 @@ public class SymbolTableTest {
         var symbolTable = semantics.getSymbolTable();
         symbolTable.putObject("TestKey", "TestValue");
         assertEquals("TestValue", symbolTable.getObject("TestKey"));
+    }
+
+    @Test
+    public void fullSymbolTableImportsTest() {
+        var st = test("symboltable/FullTest.jmm", false).getSymbolTable();
+        assertEquals(2, st.getImports().size());
+        assertTrue(st.getImports().contains("io"));
+        assertTrue(st.getImports().contains("util.List"));
+    }
+
+    @Test
+    public void fullSymbolTableDeclaredClassTest() {
+        var st = test("symboltable/FullTest.jmm", false).getSymbolTable();
+        // Declared class
+        assertEquals("FullTest", st.getClassName());
+    }
+
+    @Test
+    public void fullSymbolTableFieldsTest() {
+        var st = test("symboltable/FullTest.jmm", false).getSymbolTable();
+        // Fields with type and array information
+        List<Symbol> fields = st.getFields();
+        assertEquals(3, fields.size());
+        var field1 = fields.stream().filter(s -> s.getName().equals("field1")).findFirst().orElse(null);
+        var field2 = fields.stream().filter(s -> s.getName().equals("field2")).findFirst().orElse(null);
+        var fieldArr = fields.stream().filter(s -> s.getName().equals("fieldArr")).findFirst().orElse(null);
+        assertNotNull(field1);
+        assertEquals("int", field1.getType().getName());
+        assertFalse(field1.getType().isArray());
+        assertNotNull(field2);
+        assertEquals("boolean", field2.getType().getName());
+        assertFalse(field2.getType().isArray());
+        assertNotNull(fieldArr);
+        assertEquals("int", fieldArr.getType().getName());
+        assertTrue(fieldArr.getType().isArray());
+    }
+
+    @Test
+    public void fullSymbolTableMethodsTest() {
+        var st = test("symboltable/FullTest.jmm", false).getSymbolTable();
+        // Methods in the declared class
+        List<String> methods = st.getMethods();
+        assertEquals(2, methods.size());
+        assertTrue(methods.contains("method1"));
+        assertTrue(methods.contains("method2"));
+        // Parameters and return type for method1
+        Type retMethod1 = st.getReturnType("method1");
+        assertEquals("int", retMethod1.getName());
+        assertFalse(retMethod1.isArray());
+        List<Symbol> paramsMethod1 = st.getParameters("method1");
+        assertEquals(2, paramsMethod1.size());
+        var paramA = paramsMethod1.stream().filter(s -> s.getName().equals("a")).findFirst().orElse(null);
+        var paramB = paramsMethod1.stream().filter(s -> s.getName().equals("b")).findFirst().orElse(null);
+        assertNotNull(paramA);
+        assertEquals("int", paramA.getType().getName());
+        assertNotNull(paramB);
+        assertEquals("boolean", paramB.getType().getName());
+
+        // Parameters and return type for method2
+        Type retMethod2 = st.getReturnType("method2");
+        assertEquals("boolean", retMethod2.getName());
+        List<Symbol> paramsMethod2 = st.getParameters("method2");
+        assertEquals(1, paramsMethod2.size());
+        var paramC = paramsMethod2.stream().filter(s -> s.getName().equals("c")).findFirst().orElse(null);
+        assertNotNull(paramC);
+        assertEquals("boolean", paramC.getType().getName());
+    }
+
+    @Test
+    public void fullSymbolTableLocalsTest() {
+        var st = test("symboltable/FullTest.jmm", false).getSymbolTable();
+        // Local variables for method1
+        List<Symbol> localsMethod1 = st.getLocalVariables("method1");
+        assertEquals(2, localsMethod1.size());
+        var local1 = localsMethod1.stream().filter(s -> s.getName().equals("local1")).findFirst().orElse(null);
+        var local2 = localsMethod1.stream().filter(s -> s.getName().equals("local2")).findFirst().orElse(null);
+        assertNotNull(local1);
+        assertEquals("int", local1.getType().getName());
+        assertNotNull(local2);
+        assertEquals("boolean", local2.getType().getName());
+
+        // Local variables for method2
+        List<Symbol> localsMethod2 = st.getLocalVariables("method2");
+        assertEquals(1, localsMethod2.size());
+        var local3 = localsMethod2.stream().filter(s -> s.getName().equals("local3")).findFirst().orElse(null);
+        assertNotNull(local3);
+        assertEquals("boolean", local3.getType().getName());
     }
 }

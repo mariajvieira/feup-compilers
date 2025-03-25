@@ -61,22 +61,14 @@ public class JmmSymbolTableBuilder {
             String varName = node.get("name");
             boolean isDeclared = false;
 
-            // Check method parameters
             if (methodParams != null) {
-                isDeclared = methodParams.stream()
-                        .anyMatch(p -> p.getName().equals(varName));
+                isDeclared = methodParams.stream().anyMatch(p -> p.getName().equals(varName));
             }
-
-            // Check local variables
             if (!isDeclared && localVars != null) {
-                isDeclared = localVars.stream()
-                        .anyMatch(l -> l.getName().equals(varName));
+                isDeclared = localVars.stream().anyMatch(l -> l.getName().equals(varName));
             }
-
-            // Check fields
             if (!isDeclared) {
-                isDeclared = fields.stream()
-                        .anyMatch(f -> f.getName().equals(varName));
+                isDeclared = fields.stream().anyMatch(f -> f.getName().equals(varName));
             }
 
             if (!isDeclared) {
@@ -84,13 +76,12 @@ public class JmmSymbolTableBuilder {
                         Stage.SEMANTIC,
                         node.getLine(),
                         node.getColumn(),
-                        "Variable '" + varName + "' not declared",
+                        "Variable \\ +varName+ \\  not declared",
                         null
                 ));
             }
         }
 
-        // Recursively check children
         for (JmmNode child : node.getChildren()) {
             checkNode(child, methodParams, localVars, fields);
         }
@@ -101,14 +92,15 @@ public class JmmSymbolTableBuilder {
                 .filter(child -> child.getKind().equals("ImportDecl"))
                 .map(importNode -> {
                     var qualifiedNameNode = importNode.getChild(0);
-                    if (qualifiedNameNode.getChildren().isEmpty()) {
-                        return qualifiedNameNode.get("name");
+                    String importName = qualifiedNameNode.get("name");
+                    if (!qualifiedNameNode.getChildren().isEmpty()) {
+                        importName += "." + qualifiedNameNode.getChildren().stream()
+                                .map(child -> child.get("name"))
+                                .collect(Collectors.joining("."));
                     }
-                    return qualifiedNameNode.getChildren().stream()
-                            .map(part -> part.get("name"))
-                            .collect(Collectors.joining("."));
+                    return importName;
                 })
-                .toList();
+                .collect(Collectors.toList());
     }
 
     private List<Symbol> buildFields(JmmNode classDecl) {
