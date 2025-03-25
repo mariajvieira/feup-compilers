@@ -1,0 +1,5 @@
+class Varargs {
+    public int varargs(int... numbers) {
+        return numbers[0];
+    }
+}

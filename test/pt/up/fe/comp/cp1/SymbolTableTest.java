@@ -170,4 +170,16 @@ public class SymbolTableTest {
         symbolTable.putObject("TestKey", "TestValue");
         assertEquals("TestValue", symbolTable.getObject("TestKey"));
     }
+    @Test
+    public void testVarargsMethod() {
+        var semantics = test("symboltable/Varargs.jmm", false);
+        var st = semantics.getSymbolTable();
+        var methods = st.getMethods();
+        assertTrue(methods.contains("varargs"));
+
+        List<Symbol> parameters = st.getParameters("varargs");
+        assertEquals(1, parameters.size());
+        assertTrue(parameters.get(0).getType().isArray());
+        assertEquals("int", parameters.get(0).getType().getName());
+    }
 }
