@@ -424,45 +424,60 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
     }
 
     private boolean isTypeCompatible(Type targetType, Type valueType, SymbolTable table) {
-        System.out.println("Checking compatibility: target=" + targetType.getName() +
-                (targetType.isArray() ? "[]" : "") +
-                ", value=" + valueType.getName() +
-                (valueType.isArray() ? "[]" : ""));
+        System.out.println("\n=== Symbol Table Debug ===");
+        System.out.println("Class: " + table.getClassName());
+        System.out.println("Super: " + table.getSuper());
+        System.out.println("Imports: " + table.getImports());
+        System.out.println("Methods: " + table.getMethods());
+        System.out.println("Fields: " + table.getFields());
 
-        // Same type
-        if (targetType.getName().equals(valueType.getName()) && targetType.isArray() == valueType.isArray()) {
-            System.out.println("  → MATCH: Exact same type");
+        System.out.println("\nMethod Details:");
+        for (String method : table.getMethods()) {
+            System.out.println("\nMethod: " + method);
+            System.out.println("Return Type: " + table.getReturnType(method));
+            System.out.println("Parameters: " + table.getParameters(method));
+            System.out.println("Local Variables: " + table.getLocalVariables(method));
+        }
+        System.out.println("=======================\n");
+        // Same type and array dimension
+        if (isImported(targetType.getName(), table) &&
+                isImported(valueType.getName(), table)) {
+            System.out.println("Both types are imported, allowing assignment");
+            return true;
+        }
+        if (targetType.getName().equals(valueType.getName()) &&
+                targetType.isArray() == valueType.isArray()) {
+            System.out.println("Same type and array dimension, allowing assignment");
             return true;
         }
 
+        // For non-array types
         if (!targetType.isArray() && !valueType.isArray()) {
-            if (isImported(targetType.getName(), table) && isImported(valueType.getName(), table)) {
-                System.out.println("  → MATCH: Both types are imported");
-                System.out.println("    Target imported: " + isImported(targetType.getName(), table));
-                System.out.println("    Value imported: " + isImported(valueType.getName(), table));
+            System.out.println("Checking non-array types");
+            // If both types are imported classes, allow assignment
+            if (isImported(targetType.getName(), table) &&
+                    isImported(valueType.getName(), table)) {
+                System.out.println("Both non-array types are imported, allowing assignment");
                 return true;
             }
 
+            // Check inheritance for current class
             if (valueType.getName().equals(table.getClassName()) &&
                     targetType.getName().equals(table.getSuper())) {
-                System.out.println("  → MATCH: Value is current class, target is superclass");
+                System.out.println("Found inheritance relationship, allowing assignment");
                 return true;
             }
         }
 
-        if (isImported(targetType.getName(), table) && isImported(valueType.getName(), table)) {
-            System.out.println("  → MATCH: Both types are imported ----- IF NOVO ----- ");
-            System.out.println("    Target imported: " + isImported(targetType.getName(), table));
-            System.out.println("    Value imported: " + isImported(valueType.getName(), table));
-            return true;
-        }
-
-        System.out.println("  → NO MATCH: Types are incompatible");
+        System.out.println("Types are not compatible");
         return false;
     }
 
     private boolean isImported(String typeName, SymbolTable table) {
-        return table.getImports().stream().anyMatch(imp ->
-                imp.endsWith("." + typeName) || imp.equals(typeName));
+        System.out.println("Checking if " + typeName + " is imported");
+        boolean result = table.getImports().stream()
+                .anyMatch(imp -> imp.equals(typeName) || imp.endsWith("." + typeName));
+        System.out.println("Is " + typeName + " imported? " + result);
+        return result;
     }
 }

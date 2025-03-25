@@ -101,10 +101,12 @@ public class JmmSymbolTableBuilder {
                 .filter(child -> child.getKind().equals("ImportDecl"))
                 .map(importNode -> {
                     var qualifiedNameNode = importNode.getChild(0);
-                    var qualifiedName = qualifiedNameNode.getChildren().stream()
+                    if (qualifiedNameNode.getChildren().isEmpty()) {
+                        return qualifiedNameNode.get("name");
+                    }
+                    return qualifiedNameNode.getChildren().stream()
                             .map(part -> part.get("name"))
                             .collect(Collectors.joining("."));
-                    return qualifiedName;
                 })
                 .toList();
     }
