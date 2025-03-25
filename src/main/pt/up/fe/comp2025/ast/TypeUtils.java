@@ -49,11 +49,12 @@ public class TypeUtils {
      * @return
      */
     public Type getExprType(JmmNode expr) {
-        return switch (expr.getKind()) {
+        String kind = expr.getKind();
+        Type result = switch (kind) {
             case "AddSub", "MulDiv", "Compare" -> newIntType();
             case "And", "Or", "Not" -> newBooleanType();
             case "Int" -> newIntType();
-            case "True", "False" -> newBooleanType();
+            case "Boolean" -> newBooleanType();
             case "This" -> new Type(table.getClassName(), false);
             case "NewArray" -> new Type("int", true);
             case "NewObject" -> new Type(expr.get("name"), false);
@@ -62,20 +63,36 @@ public class TypeUtils {
             case "MethodCall" -> {
                 var methodName = expr.get("name");
                 var returnType = table.getReturnType(methodName);
-                yield returnType != null ? returnType : new Type("unknown", false);
+                if (returnType != null) {
+                    yield returnType;
+                } else {
+                    // Check caller; if imported, assume method exists and returns int.
+                    JmmNode callerNode = expr.getChildren().get(0);
+                    Type callerType = getExprType(callerNode);
+                    if (isImported(callerType.getName())) {
+                        yield newIntType();
+                    } else {
+                        yield new Type("unknown", false);
+                    }
+                }
             }
             case "Id" -> {
-                String varName = expr.get("name");
-                String methodSignature = expr.getAncestor(Kind.METHOD_DECL).map(node -> node.get("name")).orElse(null);
-                Type type = getTypeFromSymbolTable(varName, methodSignature);
+                String idName = expr.get("name");
+                if ("true".equals(idName) || "false".equals(idName)) {
+                    yield newBooleanType();
+                }
+                String methodSignature = expr.getAncestor(Kind.METHOD_DECL)
+                        .map(node -> node.get("name")).orElse(null);
+                Type type = getTypeFromSymbolTable(idName, methodSignature);
                 yield type != null ? type : new Type("unknown", false);
             }
             case "Parenthesis" -> getExprType(expr.getChildren().get(0));
             default -> new Type("unknown", false);
         };
+        System.out.println("DEBUG: Expression with kind \\`" + kind + "\\` returns type \\`" + result.getName()
+                + (result.isArray() ? "[]" : "") + "\\`");
+        return result;
     }
-
-
     private Type getTypeFromSymbolTable(String varName, String methodSignature) {
         for (var local : table.getLocalVariables(methodSignature)) {
             if (local.getName().equals(varName)) return local.getType();
@@ -87,5 +104,12 @@ public class TypeUtils {
             if (field.getName().equals(varName)) return field.getType();
         }
         return null; // Se não encontrar, devolve null
+    }
+
+    private boolean isImported(String typeName) {
+        boolean imported = table.getImports().stream()
+                .anyMatch(imp -> imp.equals(typeName) || imp.endsWith("." + typeName));
+        System.out.println("DEBUG: Type \\`" + typeName + "\\` imported? " + imported);
+        return imported;
     }
 }

@@ -41,6 +41,9 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
         return null;
     }
 
+
+
+    // ASSUME ARGUMENTS TEST
     private Void visitAssignStmt(JmmNode assignStmt, SymbolTable table) {
         JmmNode target = assignStmt.getChildren().get(0);
         JmmNode value = assignStmt.getChildren().get(1);
