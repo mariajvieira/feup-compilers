@@ -175,9 +175,11 @@ public class SymbolTableTest {
     @Test
     public void fullSymbolTableImportsTest() {
         var st = test("symboltable/FullTest.jmm", false).getSymbolTable();
-        assertEquals(2, st.getImports().size());
+
+        System.out.println("-----------------\n----------------\nDEBUG: Imports in Symbol Table: " + st.getImports()+ "\n----------------\n-----------------");
+
+        assertEquals(1, st.getImports().size());
         assertTrue(st.getImports().contains("io"));
-        assertTrue(st.getImports().contains("util.List"));
     }
 
     @Test
@@ -388,9 +390,7 @@ public class SymbolTableTest {
     @Test
     public void testMultipleNestedLocals() {
         var st = test("symboltable/MultipleLocals.jmm", false).getSymbolTable();
-        // Assume that method 'compute' declares three local variables (including those inside nested blocks)
         List<Symbol> locals = st.getLocalVariables("compute");
-        // Verify that all expected local variables are present
         assertEquals("Method 'compute' should have three locals", 3, locals.size());
         assertNotNull("Local 'temp' is missing",
                 locals.stream().filter(s -> s.getName().equals("temp")).findFirst().orElse(null));
@@ -404,7 +404,6 @@ public class SymbolTableTest {
     public void testFieldArrayTypes() {
         var st = test("symboltable/FieldsArrays.jmm", false).getSymbolTable();
         List<Symbol> fields = st.getFields();
-        // Assume fields 'numbers' and 'booleans' are arrays and field 'name' is non-array.
         var numbers = fields.stream().filter(f -> f.getName().equals("numbers")).findFirst().orElse(null);
         var booleans = fields.stream().filter(f -> f.getName().equals("booleans")).findFirst().orElse(null);
         var name = fields.stream().filter(f -> f.getName().equals("name")).findFirst().orElse(null);
@@ -425,7 +424,6 @@ public class SymbolTableTest {
     @Test
     public void testMethodReturnTypesExtended() {
         var st = test("symboltable/ReturnTypes.jmm", false).getSymbolTable();
-        // Assuming file ReturnTypes.jmm declares methods: voidMethod (void), arrayMethod (int[]) and objectMethod (ReturnTypes)
         Type voidType = st.getReturnType("voidMethod");
         Type arrayType = st.getReturnType("arrayMethod");
         Type objectType = st.getReturnType("objectMethod");
@@ -434,5 +432,20 @@ public class SymbolTableTest {
         assertEquals("arrayMethod should return int array", new Type("int", true), arrayType);
         assertEquals("objectMethod should return ReturnTypes", new Type("ReturnTypes", false), objectType);
     }
+
+
+
+    @Test
+    public void testTwoImportsUsed() {
+        var semantics = test("symboltable/TwoImports.jmm", false);
+        var st = semantics.getSymbolTable();
+
+        System.out.println("-----------------\n----------------\nDEBUG: Imports in Symbol Table: " + st.getImports()+ "\n----------------\n-----------------");
+
+        assertEquals("There should be 2 imports", 2, st.getImports().size());
+        assertTrue("Import 'io' missing", st.getImports().contains("io"));
+        assertTrue("Import 'util.List' missing", st.getImports().contains("util.List"));
+    }
+
 
 }

@@ -37,7 +37,7 @@ importDecl
     ;
 
 qualifiedName
-    : name=ID ('.' ID)*
+    : name+=ID ('.' name+=ID)*
     ;
 
 classDecl
