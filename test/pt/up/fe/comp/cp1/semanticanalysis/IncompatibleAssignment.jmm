@@ -1,0 +1,6 @@
+class IncompatibleAssignment {
+    public static void main(String[] args) {
+        int x = true; // Error: Cannot assign boolean to int
+        boolean b = 5; // Error: Cannot assign int to boolean
+    }
+}

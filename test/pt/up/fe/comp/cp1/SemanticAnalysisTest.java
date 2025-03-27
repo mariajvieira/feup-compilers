@@ -175,4 +175,114 @@ public class SemanticAnalysisTest {
     }
 
 
+
+    // ---------------------------------------------//
+    //              ADDITIONAL TESTS                //
+    // ---------------------------------------------//
+
+
+    @Test
+    public void thisInStaticMethod() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/StaticMethodThisFail.jmm"));
+        TestUtils.mustFail(result);
+        System.out.println(result.getReports());
+    }
+
+    @Test
+    public void correctMethodOverload() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/CorrectMethodOverload.jmm"));
+        TestUtils.noErrors(result);
+    }
+
+
+    @Test
+    public void returnWrongType() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/ReturnWrongType.jmm"));
+        TestUtils.mustFail(result);
+        System.out.println(result.getReports());
+    }
+    @Test
+    public void thisAssignmentValid() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/ThisAssignmentValid.jmm"));
+        TestUtils.noErrors(result);
+    }
+
+    @Test
+    public void invalidVarargDeclaration() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/InvalidVarargDeclaration.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void missingMethodInImportedClass() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/MissingMethodInImportedClass.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void incompatibleArrayAssignment() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/IncompatibleArrayAssignment.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void unknownVariableAccess() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/UnknownVariableAccess.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void typeMismatchOperation() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/TypeMismatchOperation.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void arrayArithmeticOperation() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/ArrayArithmeticOperation.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void invalidArrayAccess() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/InvalidArrayAccess.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void incompatibleAssignment() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/IncompatibleAssignment.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void invalidConditionType() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/InvalidConditionType.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+
+    @Test
+    public void varargsInvalidUsage() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/VarargsInvalidUsage.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void incompatibleMethodArguments() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/IncompatibleMethodArguments.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void methodNotFoundExtends() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/MethodNotFoundExtends.jmm"));
+        TestUtils.mustFail(result);
+    }
+   // @Test
+   // public void incorrectMethodOverload() {
+   //     var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/IncorrectMethodOverload.jmm"));
+   //     TestUtils.mustFail(result);
+   // }
+
 }

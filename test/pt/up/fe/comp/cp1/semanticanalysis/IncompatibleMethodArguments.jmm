@@ -1,0 +1,7 @@
+class IncompatibleMethodArguments {
+    public void method(int x, boolean y) {}
+
+    public void testMethodCall() {
+        method(true, 5); // Error: Argument types do not match method signature
+    }
+}

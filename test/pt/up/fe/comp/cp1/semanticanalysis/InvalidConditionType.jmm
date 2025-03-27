@@ -1,0 +1,12 @@
+class InvalidConditionType {
+    public void invalidIf() {
+        if (5) { // Error: Condition must be boolean
+            System.out.println("This won't work");
+        }
+
+        int[] arr = new int[5];
+        while (arr) { // Error: Condition must be boolean
+            // Some code
+        }
+    }
+}

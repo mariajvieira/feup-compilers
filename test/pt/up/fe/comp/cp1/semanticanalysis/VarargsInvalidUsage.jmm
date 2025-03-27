@@ -1,0 +1,13 @@
+class VarargsInvalidUsage {
+    public void invalidVarargs(int... values, String name) { // Error: Vararg must be the last parameter
+        // Some code
+    }
+
+    public void multipleVarargs(int... values1, int... values2) { // Error: Only one vararg parameter allowed
+        // Some code
+    }
+
+    public void varargDeclaration(int... values) { // Error: Method return cannot be vararg
+        return values;
+    }
+}

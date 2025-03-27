@@ -1,0 +1,7 @@
+import ImportedClass;
+
+class Test {
+    public void foo() {
+        ImportedClass.someMethod();
+    }
+}

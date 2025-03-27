@@ -1,0 +1,9 @@
+class VarargTest {
+    public int[]... invalidReturn() {
+        return new int[]{1, 2, 3};
+    }
+
+    public void test() {
+        int... numbers = new int[]{1, 2, 3};
+    }
+}

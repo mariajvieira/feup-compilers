@@ -1,0 +1,7 @@
+class OverloadTest {
+    public void foo(int a) {}
+
+    public int foo(int a) {
+        return a;
+    }
+}
