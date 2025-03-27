@@ -1,0 +1,8 @@
+class UndeclaredVariable {
+    int main() {
+        int a;
+        a = 10;
+        b = 20; // 'b' is not declared, should trigger an error.
+        return a;
+    }
+}

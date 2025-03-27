@@ -53,8 +53,8 @@ varDecl
 
 type locals[boolean isArray=false]
     : name=INT ('[' ']' {$isArray=true;})?       // int, int[]
-    | name=BOOLEAN ('[' ']')?                   // boolean, boolean[]
-    | name=STRING ('[' ']')?                    // String, String[]
+    | name=BOOLEAN ('[' ']' {$isArray=true;})?                   // boolean, boolean[]
+    | name=STRING ('[' ']' {$isArray=true;})?                    // String, String[]
     | name=ID ('[' ']' {$isArray=true;})?      // class name or array
     | name=VOID                                 // void (for methods)
     | name=INT '...' {$isArray=true;}           // int varargs
@@ -86,9 +86,9 @@ param
 
 stmt
     : '{' stmt* '}'                           # Block
-    | 'if' '(' expr ')' stmt
-      ('else' stmt)?                          # IfStmt
+    | 'if' '(' expr ')' stmt ('else' stmt)?   # IfStmt
     | 'while' '(' expr ')' stmt               # WhileStmt
+    | varDecl                                 # VarDeclStmt
     | target=expr '=' value=expr ';'          # AssignStmt
     | expr ';'                                # ExprStmt
     | returnStmt                              #RetStmt

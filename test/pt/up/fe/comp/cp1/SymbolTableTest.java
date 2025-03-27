@@ -364,6 +364,75 @@ public class SymbolTableTest {
         assertEquals("Type for local3", "boolean", local3.getType().getName());
     }
 
+    @Test
+    public void testEmptyClassSymbolTable() {
+        var st = test("symboltable/EmptyClass.jmm", false).getSymbolTable();
+        assertTrue("Imports should be empty", st.getImports().isEmpty());
+        assertEquals("Class name mismatch", "EmptyClass", st.getClassName());
+        assertNull("Super should be null", st.getSuper());
+        assertTrue("Fields should be empty", st.getFields().isEmpty());
+        assertTrue("Methods should be empty", st.getMethods().isEmpty());
+    }
 
+    @Test
+    public void testVarargsParameterExtended() {
+        var st = test("symboltable/Varargs.jmm", false).getSymbolTable();
+        assertTrue("Method 'varargs' should be present", st.getMethods().contains("varargs"));
+        List<Symbol> parameters = st.getParameters("varargs");
+        assertEquals("Method 'varargs' must have one parameter", 1, parameters.size());
+        Type varargType = parameters.get(0).getType();
+        assertTrue("Parameter should be an array", varargType.isArray());
+        assertEquals("Parameter type should be int", "int", varargType.getName());
+    }
+
+    @Test
+    public void testMultipleNestedLocals() {
+        var st = test("symboltable/MultipleLocals.jmm", false).getSymbolTable();
+        // Assume that method 'compute' declares three local variables (including those inside nested blocks)
+        List<Symbol> locals = st.getLocalVariables("compute");
+        // Verify that all expected local variables are present
+        assertEquals("Method 'compute' should have three locals", 3, locals.size());
+        assertNotNull("Local 'temp' is missing",
+                locals.stream().filter(s -> s.getName().equals("temp")).findFirst().orElse(null));
+        assertNotNull("Local 'result' is missing",
+                locals.stream().filter(s -> s.getName().equals("result")).findFirst().orElse(null));
+        assertNotNull("Local 'flag' is missing",
+                locals.stream().filter(s -> s.getName().equals("flag")).findFirst().orElse(null));
+    }
+
+    @Test
+    public void testFieldArrayTypes() {
+        var st = test("symboltable/FieldsArrays.jmm", false).getSymbolTable();
+        List<Symbol> fields = st.getFields();
+        // Assume fields 'numbers' and 'booleans' are arrays and field 'name' is non-array.
+        var numbers = fields.stream().filter(f -> f.getName().equals("numbers")).findFirst().orElse(null);
+        var booleans = fields.stream().filter(f -> f.getName().equals("booleans")).findFirst().orElse(null);
+        var name = fields.stream().filter(f -> f.getName().equals("name")).findFirst().orElse(null);
+
+        assertNotNull("Field 'numbers' is missing", numbers);
+        assertTrue("Field 'numbers' should be an array", numbers.getType().isArray());
+        assertEquals("Field 'numbers' type should be int", "int", numbers.getType().getName());
+
+        assertNotNull("Field 'booleans' is missing", booleans);
+        assertTrue("Field 'booleans' should be an array", booleans.getType().isArray());
+        assertEquals("Field 'booleans' type should be boolean", "boolean", booleans.getType().getName());
+
+        assertNotNull("Field 'name' is missing", name);
+        assertFalse("Field 'name' should not be an array", name.getType().isArray());
+        assertEquals("Field 'name' type should be String", "String", name.getType().getName());
+    }
+
+    @Test
+    public void testMethodReturnTypesExtended() {
+        var st = test("symboltable/ReturnTypes.jmm", false).getSymbolTable();
+        // Assuming file ReturnTypes.jmm declares methods: voidMethod (void), arrayMethod (int[]) and objectMethod (ReturnTypes)
+        Type voidType = st.getReturnType("voidMethod");
+        Type arrayType = st.getReturnType("arrayMethod");
+        Type objectType = st.getReturnType("objectMethod");
+
+        assertEquals("voidMethod should return void", new Type("void", false), voidType);
+        assertEquals("arrayMethod should return int array", new Type("int", true), arrayType);
+        assertEquals("objectMethod should return ReturnTypes", new Type("ReturnTypes", false), objectType);
+    }
 
 }

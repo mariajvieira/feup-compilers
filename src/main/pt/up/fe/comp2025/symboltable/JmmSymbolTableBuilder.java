@@ -87,21 +87,33 @@ public class JmmSymbolTableBuilder {
         }
     }
 
+
+
     private List<String> buildImports(JmmNode root) {
         return root.getChildren().stream()
                 .filter(child -> child.getKind().equals("ImportDecl"))
                 .map(importNode -> {
                     var qualifiedNameNode = importNode.getChild(0);
                     String importName = qualifiedNameNode.get("name");
+                    if (importName == null) {
+                        importName = getNodeText(qualifiedNameNode);
+                    }
                     if (!qualifiedNameNode.getChildren().isEmpty()) {
                         importName += "." + qualifiedNameNode.getChildren().stream()
-                                .map(child -> child.get("name"))
+                                .map(child -> child.get("name") != null ? child.get("name") : getNodeText(child))
                                 .collect(Collectors.joining("."));
                     }
                     return importName;
                 })
                 .collect(Collectors.toList());
     }
+
+
+    private String getNodeText(JmmNode node) {
+        String text = node.get("name");
+        return text != null ? text : node.toString();
+    }
+
 
     private List<Symbol> buildFields(JmmNode classDecl) {
         return classDecl.getChildren(VAR_DECL).stream()
@@ -169,10 +181,12 @@ public class JmmSymbolTableBuilder {
 
     private void collectLocalVars(JmmNode node, List<Symbol> locals) {
         if (node.getKind().equals("VarDecl")) {
-            locals.add(new Symbol(
-                    TypeUtils.convertType(node.getChild(0)),
-                    node.get("name")
-            ));
+            String varName = node.get("name");
+            // Only add the variable if it hasn't been declared in an outer/nested scope already
+            boolean alreadyDeclared = locals.stream().anyMatch(s -> s.getName().equals(varName));
+            if (!alreadyDeclared) {
+                locals.add(new Symbol(TypeUtils.convertType(node.getChild(0)), varName));
+            }
         }
         for (JmmNode child : node.getChildren()) {
             collectLocalVars(child, locals);

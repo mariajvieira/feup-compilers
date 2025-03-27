@@ -1,0 +1,12 @@
+class MultipleLocals {
+    int compute() {
+        int temp;
+        {
+            int result;
+            {
+                int flag;
+            }
+        }
+        return 0;
+    }
+}

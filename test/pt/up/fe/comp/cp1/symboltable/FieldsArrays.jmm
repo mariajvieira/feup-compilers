@@ -1,0 +1,5 @@
+class FieldsArrays {
+    int[] numbers;
+    boolean[] booleans;
+    String name;
+}
