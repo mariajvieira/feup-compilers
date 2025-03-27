@@ -1,0 +1,7 @@
+class ThisInStaticMethod {
+    int value;
+
+    public static void invalidStaticMethod() {
+        this.value = 10; // Error: Cannot use 'this' in static method
+    }
+}

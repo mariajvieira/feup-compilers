@@ -1,0 +1,10 @@
+class InvalidArrayAccess {
+    public static void main(String[] args) {
+        int x = 10;
+        int value = x[0]; // Error: Trying to access array index on non-array
+
+        int[] arr = new int[5];
+        int index = true;
+        int val = arr[index]; // Error: Array index must be an integer
+    }
+}

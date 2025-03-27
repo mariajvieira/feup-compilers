@@ -1,0 +1,7 @@
+class ArrayArithmeticOperation {
+    public static void main(String[] args) {
+        int[] arr1 = new int[5];
+        int[] arr2 = new int[5];
+        int[] result = arr1 + arr2; // Error: Cannot perform arithmetic on arrays
+    }
+}

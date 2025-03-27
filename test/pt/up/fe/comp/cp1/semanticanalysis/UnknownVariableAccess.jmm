@@ -1,0 +1,5 @@
+class UnknownVariableAccess {
+    public static void main(String[] args) {
+        int x = undeclaredVariable; // Error: Variable not declared
+    }
+}

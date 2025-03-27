@@ -1,0 +1,5 @@
+class MethodNotFoundExtends extends UnknownClass {
+    public void testMethod() {
+        nonExistentMethod(); // Error if UnknownClass is not imported or does not have this method
+    }
+}

@@ -225,6 +225,60 @@ public class SemanticAnalysisTest {
         TestUtils.mustFail(result);
     }
 
+    @Test
+    public void unknownVariableAccess() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/UnknownVariableAccess.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void typeMismatchOperation() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/TypeMismatchOperation.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void arrayArithmeticOperation() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/ArrayArithmeticOperation.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void invalidArrayAccess() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/InvalidArrayAccess.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void incompatibleAssignment() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/IncompatibleAssignment.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void invalidConditionType() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/InvalidConditionType.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+
+    @Test
+    public void varargsInvalidUsage() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/VarargsInvalidUsage.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void incompatibleMethodArguments() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/IncompatibleMethodArguments.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void methodNotFoundExtends() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/MethodNotFoundExtends.jmm"));
+        TestUtils.mustFail(result);
+    }
    // @Test
    // public void incorrectMethodOverload() {
    //     var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/IncorrectMethodOverload.jmm"));

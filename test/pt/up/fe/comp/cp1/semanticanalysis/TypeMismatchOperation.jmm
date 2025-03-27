@@ -1,0 +1,7 @@
+class TypeMismatchOperation {
+    public static void main(String[] args) {
+        boolean b = true;
+        int x = 5;
+        int result = x + b; // Error: Cannot add int and boolean
+    }
+}
