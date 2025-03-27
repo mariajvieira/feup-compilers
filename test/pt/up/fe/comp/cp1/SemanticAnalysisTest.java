@@ -201,4 +201,23 @@ public class SemanticAnalysisTest {
         TestUtils.mustFail(result);
         System.out.println(result.getReports());
     }
+    @Test
+    public void thisAssignmentValid() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/ThisAssignmentValid.jmm"));
+        TestUtils.noErrors(result);
+    }
+
+    @Test
+    public void invalidVarargDeclaration() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/InvalidVarargDeclaration.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void missingMethodInImportedClass() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/MissingMethodInImportedClass.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+
 }
