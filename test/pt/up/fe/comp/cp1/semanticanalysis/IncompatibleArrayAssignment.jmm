@@ -1,0 +1,5 @@
+class ArrayTest {
+    public void test() {
+        int[] numbers;
+        numbers = new boolean[10];
+}

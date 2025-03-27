@@ -219,5 +219,16 @@ public class SemanticAnalysisTest {
         TestUtils.mustFail(result);
     }
 
+    @Test
+    public void incompatibleArrayAssignment() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/IncompatibleArrayAssignment.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+   // @Test
+   // public void incorrectMethodOverload() {
+   //     var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/IncorrectMethodOverload.jmm"));
+   //     TestUtils.mustFail(result);
+   // }
 
 }
