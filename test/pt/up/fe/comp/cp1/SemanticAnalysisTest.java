@@ -188,6 +188,17 @@ public class SemanticAnalysisTest {
         System.out.println(result.getReports());
     }
 
+    @Test
+    public void correctMethodOverload() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/CorrectMethodOverload.jmm"));
+        TestUtils.noErrors(result);
+    }
 
 
+    @Test
+    public void returnWrongType() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/ReturnWrongType.jmm"));
+        TestUtils.mustFail(result);
+        System.out.println(result.getReports());
+    }
 }

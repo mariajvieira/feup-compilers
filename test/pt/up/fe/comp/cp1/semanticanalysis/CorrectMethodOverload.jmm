@@ -1,0 +1,9 @@
+class Test {
+    public int method(int x) {
+        return x;
+    }
+
+    public int method(int x, int y) {
+        return x + y;
+    }
+}
