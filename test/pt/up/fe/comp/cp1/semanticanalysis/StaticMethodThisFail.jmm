@@ -1,0 +1,5 @@
+class StaticMethodThisFail {
+    public static int staticMethod() {
+        return this.field;
+    }
+}

@@ -175,4 +175,19 @@ public class SemanticAnalysisTest {
     }
 
 
+
+    // ---------------------------------------------//
+    //              ADDITIONAL TESTS                //
+    // ---------------------------------------------//
+
+
+    @Test
+    public void thisInStaticMethod() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/StaticMethodThisFail.jmm"));
+        TestUtils.mustFail(result);
+        System.out.println(result.getReports());
+    }
+
+
+
 }
