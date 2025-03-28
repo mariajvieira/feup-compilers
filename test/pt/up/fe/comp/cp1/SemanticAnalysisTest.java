@@ -279,10 +279,25 @@ public class SemanticAnalysisTest {
         var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/MethodNotFoundExtends.jmm"));
         TestUtils.mustFail(result);
     }
-   // @Test
-   // public void incorrectMethodOverload() {
-   //     var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/IncorrectMethodOverload.jmm"));
-   //     TestUtils.mustFail(result);
-   // }
+
+
+    @Test
+    public void shadowedVariableDeclaration() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/ShadowedVariableDeclaration.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void ambiguousMethodOverloading() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/AmbiguousMethodOverloading.jmm"));
+        TestUtils.mustFail(result);
+    }
+
+
+    @Test
+    public void variableScopeViolation() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp1/semanticanalysis/VariableScopeViolation.jmm"));
+        TestUtils.mustFail(result);
+    }
 
 }

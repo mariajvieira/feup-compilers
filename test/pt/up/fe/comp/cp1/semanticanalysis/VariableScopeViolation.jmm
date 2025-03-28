@@ -1,0 +1,13 @@
+class VariableScopeViolation {
+    public void method() {
+        {
+            int x = 10;
+        }
+        x = 20; // This should cause a scope violation error
+    }
+
+    public static void main(String[] args) {
+        VariableScopeViolation obj = new VariableScopeViolation();
+        obj.method();
+    }
+}

@@ -1,0 +1,13 @@
+class AmbiguousMethodOverloading {
+    public void method(int x) {
+        System.out.println("int version");
+    }
+
+    public void method(double x) {
+        System.out.println("double version");
+    }
+
+    public static void main(String[] args) {
+        method(5);
+    }
+}
