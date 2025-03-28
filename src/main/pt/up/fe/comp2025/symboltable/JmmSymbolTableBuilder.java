@@ -90,22 +90,18 @@ public class JmmSymbolTableBuilder {
 
 
     private List<String> buildImports(JmmNode root) {
-        return root.getChildren().stream()
-                .filter(child -> child.getKind().equals("ImportDecl"))
-                .map(importNode -> {
-                    var qualifiedNameNode = importNode.getChild(0);
-                    String importName = qualifiedNameNode.get("name");
-                    if (importName == null) {
-                        importName = getNodeText(qualifiedNameNode);
-                    }
-                    if (!qualifiedNameNode.getChildren().isEmpty()) {
-                        importName += "." + qualifiedNameNode.getChildren().stream()
-                                .map(child -> child.get("name") != null ? child.get("name") : getNodeText(child))
-                                .collect(Collectors.joining("."));
-                    }
-                    return importName;
-                })
-                .collect(Collectors.toList());
+        List<String> imports = new ArrayList<>();
+        for (JmmNode child : root.getChildren()) {
+            if (child.getKind().equals("ImportDecl")) {
+                JmmNode qualifiedNameNode = child.getChildren().getFirst();
+                List<String> nameParts = qualifiedNameNode.getOptionalObject("name")
+                        .map(obj -> (List<String>) obj)
+                        .orElse(new ArrayList<>());
+                String importName = String.join(".", nameParts);
+                imports.add(importName);
+            }
+        }
+        return imports;
     }
 
 
