@@ -28,10 +28,7 @@ import pt.up.fe.specs.util.exceptions.NotImplementedException;
 import pt.up.fe.specs.util.utilities.LineStream;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -720,4 +717,5 @@ public class CpUtils {
 
         CpUtils.assertTrue(() -> "Expected to find assignment to literal " + literal, foundLiteral, result);
     }
+
 }
