@@ -49,6 +49,12 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit(RETURN_STMT, this::visitReturn);
         addVisit(ASSIGN_STMT, this::visitAssignStmt);
 
+        addVisit(ARRAY_ACCESS, this::visitArrayAccess);
+        addVisit(ASSIGN_ARRAY_STMT, this::visitArrayAssign);
+        addVisit(IF_STMT, this::visitIfStmt);
+        addVisit(WHILE_STMT, this::visitWhileStmt);
+        addVisit(METHOD_CALL, this::visitMethodCall);
+
 //        setDefaultVisit(this::defaultVisit);
     }
 
@@ -219,4 +225,122 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         return "";
     }
+
+
+
+    // ----------------------- NOVAS FUNCOES ------------------------------ //
+    private String visitArrayAccess(JmmNode node, Void unused) {
+        var arrNode = node.getChild(0);
+        var idxNode = node.getChild(1);
+
+        var arrExpr = exprVisitor.visit(arrNode);
+        var idxExpr = exprVisitor.visit(idxNode);
+
+        StringBuilder code = new StringBuilder();
+        code.append(arrExpr.getComputation()).append(idxExpr.getComputation());
+
+        String tmpVar = ollirTypes.nextTemp();
+        String arrType = ".i32"; // Adjust if needed (e.g., .array.i32 or .bool)
+
+        code.append(tmpVar).append(arrType).append(" :=.i32 ")
+                .append(arrExpr.getCode()).append("[")
+                .append(idxExpr.getCode()).append("]").append(arrType)
+                .append(";\n");
+
+        return code.toString();
+    }
+
+
+
+    private String visitArrayAssign(JmmNode node, Void unused) {
+        var arrNode = node.getChild(0);
+        var idxNode = node.getChild(1);
+        var valNode = node.getChild(2);
+
+        var arrExpr = exprVisitor.visit(arrNode);
+        var idxExpr = exprVisitor.visit(idxNode);
+        var valExpr = exprVisitor.visit(valNode);
+
+        StringBuilder code = new StringBuilder();
+        code.append(arrExpr.getComputation())
+                .append(idxExpr.getComputation())
+                .append(valExpr.getComputation());
+
+        code.append(arrExpr.getCode()).append("[")
+                .append(idxExpr.getCode()).append("]").append(".i32")
+                .append(" :=.i32 ")
+                .append(valExpr.getCode()).append(";\n");
+
+        return code.toString();
+    }
+
+    private String visitIfStmt(JmmNode node, Void unused) {
+        String labelElse = "LabelElse" + ollirTypes.nextTemp("");
+        String labelEnd = "LabelEnd" + ollirTypes.nextTemp("");
+
+        var condExpr = exprVisitor.visit(node.getChild(0));
+        var thenStmt = node.getChild(1);
+        var elseStmt = node.getNumChildren() > 2 ? node.getChild(2) : null;
+
+        StringBuilder code = new StringBuilder();
+        code.append(condExpr.getComputation());
+
+        code.append("if (").append(condExpr.getCode())
+                .append(") goto ").append(labelElse).append(";\n");
+
+        code.append(visit(thenStmt));
+
+        code.append("goto ").append(labelEnd).append(";\n");
+
+        code.append(labelElse).append(":\n");
+        if (elseStmt != null) {
+            code.append(visit(elseStmt));
+        }
+
+        code.append(labelEnd).append(":\n");
+
+        return code.toString();
+    }
+
+    private String visitWhileStmt(JmmNode node, Void unused) {
+        String labelCond = "LabelCond" + ollirTypes.nextTemp("");
+        String labelBody = "LabelBody" + ollirTypes.nextTemp("");
+
+        var condExpr = exprVisitor.visit(node.getChild(0));
+        var bodyStmt = node.getChild(1);
+
+        StringBuilder code = new StringBuilder();
+        code.append(labelCond).append(":\n")
+                .append(condExpr.getComputation())
+                .append("if (").append(condExpr.getCode())
+                .append(") goto ").append(labelBody).append(";\n")
+                .append("goto LabelEnd").append(labelCond).append(";\n")
+                .append(labelBody).append(":\n")
+                .append(visit(bodyStmt))
+                .append("goto ").append(labelCond).append(";\n")
+                .append("LabelEnd").append(labelCond).append(":\n");
+
+        return code.toString();
+    }
+
+    private String visitMethodCall(JmmNode node, Void unused) {
+        String methodName = node.get("methodName");
+        var argNodes = node.getChildren();
+        StringBuilder code = new StringBuilder();
+
+        for (var argNode : argNodes) {
+            var argExpr = exprVisitor.visit(argNode);
+            code.append(argExpr.getComputation());
+        }
+
+        String tmpVar = ollirTypes.nextTemp();
+        code.append(tmpVar).append(".i32 :=.i32 invokevirtual(")
+                .append("this, \"").append(methodName).append("\",");
+
+        code.append(" tmpArr.array.i32").append(").i32;\n");
+
+        return code.toString();
+    }
+
+
 }
