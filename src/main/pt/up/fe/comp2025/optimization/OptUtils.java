@@ -13,9 +13,7 @@ import static pt.up.fe.comp2025.ast.Kind.TYPE;
  */
 public class OptUtils {
 
-
     private final AccumulatorMap<String> temporaries;
-
     private final TypeUtils types;
 
     public OptUtils(TypeUtils types) {
@@ -23,41 +21,40 @@ public class OptUtils {
         this.temporaries = new AccumulatorMap<>();
     }
 
-
     public String nextTemp() {
-
         return nextTemp("tmp");
     }
 
     public String nextTemp(String prefix) {
-
-        // Subtract 1 because the base is 1
         var nextTempNum = temporaries.add(prefix) - 1;
-
         return prefix + nextTempNum;
     }
 
-
     public String toOllirType(JmmNode typeNode) {
-
         TYPE.checkOrThrow(typeNode);
-
         return toOllirType(types.convertType(typeNode));
     }
 
     public String toOllirType(Type type) {
-        return toOllirType(type.getName());
+        return toOllirType(type.getName(), type.isArray());
+    }
+
+    private String toOllirType(String typeName, boolean isArray) {
+        String baseType = switch (typeName) {
+            case "int" -> "i32";
+            case "boolean" -> "bool";
+            case "void" -> "V";
+            default -> typeName; // For class types or unknowns
+        };
+
+        if (isArray) {
+            return ".array." + baseType;
+        }
+
+        return "." + baseType;
     }
 
     private String toOllirType(String typeName) {
-
-        String type = "." + switch (typeName) {
-            case "int" -> "i32";
-            default -> throw new NotImplementedException(typeName);
-        };
-
-        return type;
+        return toOllirType(typeName, false);
     }
-
-
 }

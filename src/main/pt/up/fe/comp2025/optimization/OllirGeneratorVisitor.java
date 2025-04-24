@@ -31,6 +31,8 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
     private final OllirExprGeneratorVisitor exprVisitor;
 
+
+
     public OllirGeneratorVisitor(SymbolTable table) {
         this.table = table;
         this.types = new TypeUtils(table);
@@ -54,10 +56,14 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit(IF_STMT, this::visitIfStmt);
         addVisit(WHILE_STMT, this::visitWhileStmt);
         addVisit(METHOD_CALL, this::visitMethodCall);
-
-//        setDefaultVisit(this::defaultVisit);
+        addVisit("MethodDecl", this::visitMethodDecl);
+        addVisit("ImportDecl", this::visitImportDecl);
+        setDefaultVisit(this::defaultVisit);
     }
 
+    private String visitImportDecl(JmmNode node, Void unused) {
+        return "";
+    }
 
     private String visitAssignStmt(JmmNode node, Void unused) {
 
@@ -65,11 +71,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         StringBuilder code = new StringBuilder();
 
-        // code to compute the children
         code.append(rhs.getComputation());
-
-        // code to compute self
-        // statement has type of lhs
         var left = node.getChild(0);
         Type thisType = types.getExprType(left);
         String typeString = ollirTypes.toOllirType(thisType);
@@ -127,44 +129,53 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
 
     private String visitMethodDecl(JmmNode node, Void unused) {
-
         StringBuilder code = new StringBuilder(".method ");
 
-        boolean isPublic = node.getBoolean("isPublic", false);
-
-        if (isPublic) {
+        if (node.getBoolean("isPublic", false)) {
             code.append("public ");
         }
 
-        // name
+        var params = node.getChildren("param");
+        boolean isVarargs = false;
+        if (!params.isEmpty()) {
+            var lastParamType = types.convertType(params.get(params.size() - 1).getChild(0));
+            isVarargs = lastParamType.isArray();
+        }
+        if (isVarargs) {
+            code.append("varargs ");
+        }
+
         var name = node.get("name");
-        code.append(name);
+        code.append(name).append("(");
 
-        // params
-        // TODO: Hardcoded for a single parameter, needs to be expanded
-        var paramsCode = visit(node.getChild(1));
-        code.append("(" + paramsCode + ")");
+        String paramsCode = params.stream()
+                .map(param -> {
+                    var id = param.get("name");
+                    var t = types.convertType(param.getChild(0));
+                    return id + ollirTypes.toOllirType(t);
+                })
+                .collect(Collectors.joining(", "));
+        code.append(paramsCode).append(")");
 
-        // type
-        // TODO: Hardcoded for int, needs to be expanded
-        var retType = ".i32";
-        code.append(retType);
-        code.append(L_BRACKET);
+        var returnTypeNode = node.getChild(0);
+        Type returnType = types.convertType(returnTypeNode);
+        code.append(ollirTypes.toOllirType(returnType)).append(" {\n");
 
+        node.getChildren("varDecl").forEach(varDecl -> {
+            var varName = varDecl.get("name");
+            var varType = types.convertType(varDecl.getChild(0));
+            code.append("    .var ").append(varName)
+                    .append(ollirTypes.toOllirType(varType)).append(";\n");
+        });
 
-        // rest of its children stmts
-        var stmtsCode = node.getChildren(STMT).stream()
+        var stmtsCode = node.getChildren("stmt").stream()
                 .map(this::visit)
                 .collect(Collectors.joining("\n   ", "   ", ""));
-
         code.append(stmtsCode);
-        code.append(R_BRACKET);
-        code.append(NL);
 
+        code.append("}\n\n");
         return code.toString();
     }
-
-
     private String visitClass(JmmNode node, Void unused) {
 
         StringBuilder code = new StringBuilder();
