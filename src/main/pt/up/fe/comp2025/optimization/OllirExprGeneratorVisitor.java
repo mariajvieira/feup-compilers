@@ -15,72 +15,75 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
     private static final String ASSIGN = ":=";
     private final String END_STMT = ";\n";
 
-    private final SymbolTable table;
-
     private final TypeUtils types;
     private final OptUtils ollirTypes;
 
 
     public OllirExprGeneratorVisitor(SymbolTable table) {
-        this.table = table;
         this.types = new TypeUtils(table);
         this.ollirTypes = new OptUtils(types);
+        setDefaultValue(() -> OllirExprResult.EMPTY);
+        buildVisitor();
     }
-
 
     @Override
     protected void buildVisitor() {
-        addVisit(VAR_REF_EXPR, this::visitVarRef);
-        addVisit(BINARY_EXPR, this::visitBinExpr);
-        addVisit(INTEGER_LITERAL, this::visitInteger);
+        // Integer literal (grammar labels it "Int")
+        addVisit("Int", this::visitInteger);
 
-//        setDefaultVisit(this::defaultVisit);
+        // Variable references
+        addVisit("Id", this::visitVarRef);
+
+        // Binary operators
+        addVisit("AddSub", this::visitBinExpr);
+        addVisit("MulDiv", this::visitBinExpr);
+        addVisit("Compare", this::visitBinExpr);
+        addVisit("And",    this::visitBinExpr);
+        addVisit("Or",     this::visitBinExpr);
+        // Fallback
+        setDefaultVisit(this::defaultVisit);
     }
 
 
     private OllirExprResult visitInteger(JmmNode node, Void unused) {
         var intType = TypeUtils.newIntType();
         String ollirIntType = ollirTypes.toOllirType(intType);
-        String code = node.get("value") + ollirIntType;
+        String value = node.get("name");                      // grammar stores lexeme in "name"
+        String code  = value + ollirIntType;                  // e.g. "1.i32"
         return new OllirExprResult(code);
     }
 
 
-    private OllirExprResult visitBinExpr(JmmNode node, Void unused) {
 
+    private OllirExprResult visitBinExpr(JmmNode node, Void unused) {
         var lhs = visit(node.getChild(0));
         var rhs = visit(node.getChild(1));
 
-        StringBuilder computation = new StringBuilder();
+        String op = node.get("op");                                    // e.g. "+"
+        Type resultType = types.getExprType(node);
+        String ollirType = ollirTypes.toOllirType(resultType).substring(1); // "i32"
 
-        computation.append(lhs.getComputation());
-        computation.append(rhs.getComputation());
+        String tmp = ollirTypes.nextTemp();
+        String instr = tmp + "." + ollirType
+                + " :=." + ollirType
+                + " " + lhs.getCode()
+                + " " + op + "." + ollirType
+                + " " + rhs.getCode()
+                + ";\n";
 
-        Type resType = types.getExprType(node);
-        String resOllirType = ollirTypes.toOllirType(resType);
-        String code = ollirTypes.nextTemp() + resOllirType;
+        String computation = lhs.getComputation()
+                + rhs.getComputation()
+                + instr;
 
-        computation.append(code).append(SPACE)
-                .append(ASSIGN).append(resOllirType).append(SPACE)
-                .append(lhs.getCode()).append(SPACE);
-
-        Type type = types.getExprType(node);
-        computation.append(node.get("op")).append(ollirTypes.toOllirType(type)).append(SPACE)
-                .append(rhs.getCode()).append(END_STMT);
-
-        return new OllirExprResult(code, computation);
+        return new OllirExprResult(tmp + "." + ollirType, computation);
     }
 
 
     private OllirExprResult visitVarRef(JmmNode node, Void unused) {
-
-        var id = node.get("name");
-        Type type = types.getExprType(node);
-        String ollirType = ollirTypes.toOllirType(type);
-
-        String code = id + ollirType;
-
-        return new OllirExprResult(code);
+        String name = node.get("name");
+        Type   t    = types.getExprType(node);
+        String suffix = ollirTypes.toOllirType(t);
+        return new OllirExprResult(name + suffix);
     }
 
     /**

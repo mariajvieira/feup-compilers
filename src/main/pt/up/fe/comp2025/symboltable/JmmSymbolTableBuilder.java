@@ -76,7 +76,7 @@ public class JmmSymbolTableBuilder {
                         Stage.SEMANTIC,
                         node.getLine(),
                         node.getColumn(),
-                        "Variable \\ +varName+ \\  not declared",
+                        "Variable " + varName + " not declared",
                         null
                 ));
             }
@@ -194,4 +194,6 @@ public class JmmSymbolTableBuilder {
                 .map(method -> method.get("name"))
                 .toList();
     }
+
+
 }
