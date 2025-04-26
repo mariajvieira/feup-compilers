@@ -59,9 +59,9 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
         var lhs = visit(node.getChild(0));
         var rhs = visit(node.getChild(1));
 
-        String op = node.get("op");                                    // e.g. "+"
+        String op = node.get("op");
         Type resultType = types.getExprType(node);
-        String ollirType = ollirTypes.toOllirType(resultType).substring(1); // "i32"
+        String ollirType = ollirTypes.toOllirType(resultType).substring(1);
 
         String tmp = ollirTypes.nextTemp();
         String instr = tmp + "." + ollirType

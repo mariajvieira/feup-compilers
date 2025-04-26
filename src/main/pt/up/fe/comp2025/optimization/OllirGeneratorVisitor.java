@@ -70,7 +70,20 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
     }
 
     private String visitImportDecl(JmmNode node, Void unused) {
-        return "";
+        var qualifiedNameNode = node.getChildren().get(0);
+
+        var qualifiedName = "";
+        if (qualifiedNameNode.getKind().equals("qualifiedName")) {
+            qualifiedName = qualifiedNameNode.getChildren().stream()
+                    .map(child -> child.get("name"))
+                    .collect(Collectors.joining("."));
+        } else {
+            qualifiedName = qualifiedNameNode.get("name");
+        }
+
+        qualifiedName = qualifiedName.replaceAll("\\[|\\]", "");
+
+        return "import " + qualifiedName + ";\n";
     }
 
     private String visitAssignStmt(JmmNode node, Void unused) {
@@ -101,7 +114,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
     }
 
 
-    // File: `src/main/pt/up/fe/comp2025/optimization/OllirGeneratorVisitor.java`
     private String visitReturn(JmmNode node, Void unused) {
         // 1. Unwrap nested return‑wrapper nodes
         JmmNode cur = node;
@@ -194,12 +206,15 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
     }
 
     private String visitClass(JmmNode node, Void unused) {
-
         StringBuilder code = new StringBuilder();
 
         code.append(NL);
         code.append(table.getClassName());
-        
+
+        if (table.getSuper() != null) {
+            code.append(" extends ").append(table.getSuper());
+        }
+
         code.append(L_BRACKET);
         code.append(NL);
         code.append(NL);
@@ -216,6 +231,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         return code.toString();
     }
+
 
     private String buildConstructor() {
 
@@ -237,6 +253,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         return code.toString();
     }
+
 
     /**
      * Default visitor. Visits every child node and return an empty string.
