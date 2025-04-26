@@ -86,70 +86,85 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         return "import " + qualifiedName + ";\n";
     }
 
+
     private String visitAssignStmt(JmmNode node, Void unused) {
         StringBuilder code = new StringBuilder();
-
-        // Get the target variable
         var left = node.getChild(0);
         String varName = left.get("name");
         Type thisType = types.getExprType(left);
         String typeString = ollirTypes.toOllirType(thisType);
 
-        // Process the value expression
         var value = node.getChild(1);
         var rhs = exprVisitor.visit(value);
-
-        // Append any computation from the expression first
         code.append(rhs.getComputation());
 
-        // Generate the assignment statement
-        code.append(varName).append(typeString);
-        code.append(SPACE);
-        code.append(ASSIGN).append(typeString);
-        code.append(SPACE);
-        code.append(rhs.getCode());
-        code.append(END_STMT);
+        String methodName = node.getAncestor(METHOD_DECL).map(n -> n.get("name")).orElse("");
+        boolean isLocalOrParam = table.getLocalVariables(methodName).stream().anyMatch(v -> v.getName().equals(varName))
+                || table.getParameters(methodName).stream().anyMatch(v -> v.getName().equals(varName));
+
+        if (!isLocalOrParam && node.getAncestor(CLASS_DECL).isPresent()
+                && table.getFields().stream().anyMatch(f -> f.getName().equals(varName))) {
+
+            code.append("putfield(this, ").append(varName).append(typeString)
+                    .append(", ").append(rhs.getCode()).append(").V;\n");
+        } else {
+            code.append(varName).append(typeString)
+                    .append(" :=").append(typeString).append(" ")
+                    .append(rhs.getCode()).append(";\n");
+        }
 
         return code.toString();
     }
 
 
     private String visitReturn(JmmNode node, Void unused) {
-        // 1. Unwrap nested return‑wrapper nodes
         JmmNode cur = node;
         while (true) {
             var kind = cur.getKind();
-            if ((kind.equals(Kind.RETURN_STMT.getNodeName())
-                    || kind.equals("ReturnStmt")
-                    || kind.equals("RetStmt"))
-                    && cur.getNumChildren() > 0) {
-                cur = cur.getChild(0);
+            if (kind.equals(Kind.RETURN_STMT.getNodeName()) || kind.equals("RetStmt")) {
+                if (cur.getNumChildren() == 0) {
+                    break;
+                } else {
+                    cur = cur.getChildren().get(0);
+                }
             } else {
                 break;
             }
         }
 
         StringBuilder code = new StringBuilder();
-        // 2. If unwrapped node is an expression, visit it
         if (cur.getNumChildren() > 0 || !cur.getKind().equals(node.getKind())) {
             var exprResult = exprVisitor.visit(cur);
             code.append(exprResult.getComputation());
-
             String operand = exprResult.getCode();
-            if (operand.isEmpty() && cur.hasAttribute("name")) {
-                operand = cur.get("name");
-            }
-            String suffix = ollirTypes.toOllirType(types.getExprType(cur));
-            code.append("ret").append(suffix)
-                    .append(" ").append(operand)
-                    .append(";").append("\n");
-        } else {
-            // void return
-            code.append("ret.V;").append("\n");
-        }
+            Type exprType = types.getExprType(cur);
+            String suffix = ollirTypes.toOllirType(exprType);
 
+            var optName = cur.getOptional("name");
+            String varName = optName.orElse(null);
+            String methodName = node.getAncestor(METHOD_DECL).map(n -> n.get("name")).orElse("");
+            boolean isLocalOrParam = varName != null && (
+                    table.getLocalVariables(methodName).stream().anyMatch(v -> v.getName().equals(varName))
+                            || table.getParameters(methodName).stream().anyMatch(v -> v.getName().equals(varName))
+            );
+            if (varName != null && !isLocalOrParam &&
+                    table.getFields().stream().anyMatch(f -> f.getName().equals(varName))) {
+                String temp = ollirTypes.nextTemp();
+                code.append(temp).append(suffix)
+                        .append(" :=.").append(suffix.substring(1))
+                        .append(" getfield(this, ").append(varName).append(suffix)
+                        .append(").").append(suffix.substring(1)).append(";\n");
+                code.append("ret").append(suffix).append(" ").append(temp).append(suffix).append(";\n");
+            } else {
+                code.append("ret").append(suffix).append(" ").append(operand).append(";\n");
+            }
+        } else {
+            code.append("ret.V;\n");
+        }
         return code.toString();
     }
+
+
     private String visitParam(JmmNode node, Void unused) {
 
         var typeCode = ollirTypes.toOllirType(node.getChild(0));
@@ -189,15 +204,26 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         );
         code.append(ollirTypes.toOllirType(retType)).append(" {\n");
 
-        // statements
-        for (JmmNode child : node.getChildren()) {
-            if (child.getKind().equals("AssignStmt")) {
+        // Visit the children of the method node to generate OLLIR code for the statements
+        for (var child : node.getChildren()) {
+            if (child.getKind().equals("VarDecl")) {
                 code.append("   ").append(visit(child, unused));
             }
         }
-        for (JmmNode child : node.getChildren()) {
+        for (var child : node.getChildren()) {
+            if (child.getKind().equals("AssignStmt")) {
+                var assignCode = visitAssignStmt(child, unused);
+                code.append("   ").append(assignCode);
+            }
+        }
+        for (var child : node.getChildren()) {
             if (child.getKind().equals("ReturnStmt") || child.getKind().equals("RetStmt")) {
                 code.append("   ").append(visitReturn(child, unused));
+            }
+        }
+        for (var child : node.getChildren()) {
+            if (child.getKind().equals("MethodCall")) {
+                code.append("   ").append(visit(child, unused));
             }
         }
 
@@ -217,6 +243,11 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         code.append(L_BRACKET);
         code.append(NL);
+
+        for (var field : table.getFields()) {
+            code.append(".field public ").append(field.getName()).append(ollirTypes.toOllirType(field.getType())).append(";\n");
+        }
+
         code.append(NL);
 
         code.append(buildConstructor());
@@ -272,8 +303,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
     }
 
 
-
-    // ----------------------- NOVAS FUNCOES ------------------------------ //
     private String visitArrayAccess(JmmNode node, Void unused) {
         var arrayExpr = exprVisitor.visit(node.getChild(0));
         var indexExpr = exprVisitor.visit(node.getChild(1));
@@ -284,7 +313,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         String temp = ollirTypes.nextTemp();
 
-        // Generate proper array access
         code.append(temp).append(".i32 :=.i32 ")
                 .append(arrayExpr.getCode()).append("[")
                 .append(indexExpr.getCode()).append("].i32;\n");
@@ -298,11 +326,9 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         StringBuilder code = new StringBuilder();
 
-        // Allocate array
         code.append(temp).append(".array.i32 :=.array.i32 ")
                 .append("new(array, ").append(size).append(").array.i32;\n");
 
-        // Initialize elements
         for (int i = 0; i < size; i++) {
             var elemExpr = exprVisitor.visit(node.getChild(i));
             code.append(elemExpr.getComputation());
@@ -394,21 +420,66 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         return code.toString();
     }
+
+
     private String visitMethodCall(JmmNode node, Void unused) {
         String methodName = node.get("methodName");
         var argNodes = node.getChildren();
         StringBuilder code = new StringBuilder();
 
-        for (var argNode : argNodes) {
-            var argExpr = exprVisitor.visit(argNode);
-            code.append(argExpr.getComputation());
+        System.out.println("MethodCall: " + methodName + ", Args: " + argNodes);
+
+        if (argNodes.size() > 0 && argNodes.get(0).get("name").equals("io") && methodName.equals("println")) {
+            StringBuilder params = new StringBuilder();
+
+            for (int i = 1; i < argNodes.size(); i++) {
+                var argExpr = exprVisitor.visit(argNodes.get(i));
+                code.append(argExpr.getComputation());
+                if (params.length() > 0) params.append(", ");
+                params.append(argExpr.getCode());
+            }
+
+            code.append("invokestatic(io, \"println\", ").append(params).append(").V;\n");
+            return code.toString();
+        } else {
+            String invokedName;
+            String type;
+
+            if (argNodes.size() == 1) {
+                invokedName = "this";
+                type = ".V";
+            } else {
+                invokedName = argNodes.get(0).get("name");
+                Type t = types.getExprType(argNodes.get(0));
+                type = ollirTypes.toOllirType(t);
+            }
+
+            if (invokedName.equals("this")) {
+                code.append("invokevirtual(this, \"").append(methodName).append("\",");
+                StringBuilder params = new StringBuilder();
+                for (int i = 1; i < argNodes.size(); i++) {
+                    var argExpr = exprVisitor.visit(argNodes.get(i));
+                    code.append(argExpr.getComputation());
+                    if (params.length() > 0) params.append(", ");
+                    params.append(argExpr.getCode());
+                }
+                code.append(params).append(").V;\n");
+
+            } else {
+                String tmpVar = ollirTypes.nextTemp();
+                StringBuilder params = new StringBuilder();
+                for (int i = 1; i < argNodes.size(); i++) {
+                    var argExpr = exprVisitor.visit(argNodes.get(i));
+                    code.append(argExpr.getComputation());
+                    if (params.length() > 0) params.append(", ");
+                    params.append(argExpr.getCode());
+                }
+                code.append(tmpVar).append(".i32 :=.i32 invokevirtual(")
+                        .append(invokedName).append(type).append(", \"").append(methodName).append("\", ")
+                        .append(params)
+                        .append(").i32;\n");
+            }
         }
-
-        String tmpVar = ollirTypes.nextTemp();
-        code.append(tmpVar).append(".i32 :=.i32 invokevirtual(")
-                .append("this, \"").append(methodName).append("\",");
-
-        code.append(" tmpArr.array.i32").append(").i32;\n");
 
         return code.toString();
     }
