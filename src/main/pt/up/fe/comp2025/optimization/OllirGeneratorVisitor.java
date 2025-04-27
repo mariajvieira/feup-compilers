@@ -195,70 +195,52 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
 
     private String visitMethodDecl(JmmNode node, Void unused) {
-        StringBuilder code = new StringBuilder(".method ");
+        StringBuilder code = new StringBuilder();
 
+        // Method signature
+        code.append(".method ");
         if (node.getBoolean("isPublic", false)) code.append("public ");
         if (node.getBoolean("isStatic", false)) code.append("static ");
-
         code.append(node.get("name")).append("(");
-
-        // parameters
         node.getChildren().stream()
                 .filter(c -> c.getKind().equals("ParamList"))
                 .findFirst()
-                .ifPresent(p -> {
-                    String params = p.getChildren().stream()
-                            .map(this::visit)
-                            .collect(Collectors.joining(", "));
-                    code.append(params);
-                });
+                .ifPresent(p -> code.append(
+                        p.getChildren().stream()
+                                .map(this::visit)
+                                .collect(Collectors.joining(", "))
+                ));
         code.append(")");
+        var retTypeNode = node.getChildren().stream()
+                .filter(c -> c.getKind().equals("Type"))
+                .findFirst().orElse(node.getChild(0));
+        code.append(ollirTypes.toOllirType(types.convertType(retTypeNode)))
+                .append(" {\n");
 
-        // return type
-        Type retType = types.convertType(
-                node.getChildren().stream()
-                        .filter(c -> c.getKind().equals("Type"))
-                        .findFirst().orElse(node.getChild(0))
-        );
-        code.append(ollirTypes.toOllirType(retType)).append(" {\n");
-
+        // Single pass over body
         for (var child : node.getChildren()) {
-            if (child.getKind().equals("Type") ||
-                    child.getKind().equals("ParamList"))
-                continue;
-
-            System.out.println("Processing node in method body: " + child.getKind());
-            String childCode = visit(child);
-            if (!childCode.isEmpty()) {
+            String stmtKind = child.getKind();
+            String childCode = "";
+            switch (stmtKind) {
+                case "VarDecl"      -> childCode = visit(child, unused);
+                case "AssignStmt"   -> childCode = visitAssignStmt(child, unused);
+                case "ReturnStmt", "RetStmt"
+                        -> childCode = visitReturn(child, unused);
+                case "MethodCall"   -> childCode = visitMethodCall(child, unused);
+                case "ExprStmt"     -> childCode = visitExprStmt(child, unused);
+                default -> {
+                    continue;
+                }
+            }
+            if (!childCode.isBlank()) {
                 code.append("   ").append(childCode);
-            }
-        }
-        for (var child : node.getChildren()) {
-            if (child.getKind().equals("VarDecl")) {
-                code.append("   ").append(visit(child, unused));
-            }
-        }
-        for (var child : node.getChildren()) {
-            if (child.getKind().equals("AssignStmt")) {
-                var assignCode = visitAssignStmt(child, unused);
-                code.append("   ").append(assignCode);
-            }
-        }
-        for (var child : node.getChildren()) {
-            if (child.getKind().equals("ReturnStmt") || child.getKind().equals("RetStmt")) {
-                code.append("   ").append(visitReturn(child, unused));
-            }
-        }
-        for (var child : node.getChildren()) {
-            if (child.getKind().equals("MethodCall")) {
-                code.append("   ").append(visit(child, unused));
+                if (!childCode.endsWith("\n")) code.append("\n");
             }
         }
 
         code.append("}\n\n");
         return code.toString();
     }
-
     private String visitClass(JmmNode node, Void unused) {
         StringBuilder code = new StringBuilder();
 

@@ -341,5 +341,4 @@ public class OllirTest {
                 .filter(element -> element instanceof ArrayOperand).count();
         CpUtils.assertEquals("Number of array reads", 6, numArrayReads, result);
     }
-
 }
