@@ -22,7 +22,7 @@ STRING : 'String' ;
 
 // Tokens
 INTEGER : [0-9]+ ;
-ID : [a-zA-Z_][a-zA-Z0-9_]* ;
+ID : [a-zA-Z_$] [a-zA-Z0-9_$]* ;
 COMMENT : '//' ~[\r\n]* -> skip ;
 MULTILINE_COMMENT : '/*' .*? '*/' -> skip ;
 WS : [ \t\n\r\f]+ -> skip ;
@@ -99,22 +99,22 @@ returnStmt
     ;
 
 expr
-    : '!' expr                                # Not
+    : expr '[' expr ']'                       # ArrayAccess
+    | '!' expr                                # Not
     | expr op=('<'|'>'|'<='|'>='|'=='|'!=') expr  # Compare
     | expr '&&' expr                          # And
     | expr '||' expr                          # Or
     | expr op=('*'|'/') expr                  # MulDiv
     | expr op=('+'|'-') expr                  # AddSub
-    | expr '[' expr ']'                       # ArrayAccess
-    | NEW name=INT '[' expr ']'               # NewArray
-    | expr '.' 'length'                       # Length
-    | expr '.' methodName=ID '(' (expr(',' expr)*)? ')'  # MethodCall
-    | NEW name=ID '(' ')'                     # NewObject
     | '(' expr ')'                            # Parenthesis
     | name=INTEGER                            # Int
     | name=(TRUE|FALSE)                       # Boolean
     | name=ID                                 # Id
     | name=THIS                               # This
+    | NEW name=ID '(' ')'                     # NewObject
+    | NEW name=INT '[' expr ']'               # NewArray
+    | expr '.' 'length'                       # Length
+    | expr '.' methodName=ID '(' (expr(',' expr)*)? ')'  # MethodCall
     | '[' arrayInit? ']'                      # ArrayLiteral
     ;
 

@@ -9,10 +9,7 @@ import pt.up.fe.comp2025.ast.Kind;
 import pt.up.fe.comp2025.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static pt.up.fe.comp2025.ast.Kind.*;
@@ -28,7 +25,6 @@ public class JmmSymbolTableBuilder {
 
     public JmmSymbolTable build(JmmNode root) {
         reports = new ArrayList<>();
-
         var classDecl = root.getChildren().stream()
                 .filter(node -> Kind.CLASS_DECL.check(node))
                 .findFirst()
@@ -40,11 +36,31 @@ public class JmmSymbolTableBuilder {
 
         var fields = buildFields(classDecl);
         var methods = buildMethods(classDecl);
+
+
         var returnTypes = buildReturnTypes(classDecl);
         var params = buildParams(classDecl);
+        for (var entry : params.entrySet()) {
+            Set<String> paramNames = new HashSet<>();
+            for (Symbol s : entry.getValue()) {
+                if (!paramNames.add(s.getName())) {
+                    reports.add(Report.newError(Stage.SEMANTIC, classDecl.getLine(), classDecl.getColumn(),
+                            "Duplicate parameter in method " + entry.getKey() + ": " + s.getName(), null));
+                }
+            }
+        }
         var locals = buildLocals(classDecl);
+        // Check for duplicate local variables inside each method
+        for (var entry : locals.entrySet()) {
+            Set<String> localNames = new HashSet<>();
+            for (Symbol s : entry.getValue()) {
+                if (!localNames.add(s.getName())) {
+                    reports.add(Report.newError(Stage.SEMANTIC, classDecl.getLine(), classDecl.getColumn(),
+                            "Duplicate local variable in method " + entry.getKey() + ": " + s.getName(), null));
+                }
+            }
+        }
 
-        // Check variable declarations in method bodies
         for (JmmNode node : classDecl.getChildren()) {
             if (node.getKind().equals("MethodDecl")) {
                 currentMethod = node.get("name");
@@ -178,7 +194,6 @@ public class JmmSymbolTableBuilder {
     private void collectLocalVars(JmmNode node, List<Symbol> locals) {
         if (node.getKind().equals("VarDecl")) {
             String varName = node.get("name");
-            // Only add the variable if it hasn't been declared in an outer/nested scope already
             boolean alreadyDeclared = locals.stream().anyMatch(s -> s.getName().equals(varName));
             if (!alreadyDeclared) {
                 locals.add(new Symbol(TypeUtils.convertType(node.getChild(0)), varName));
