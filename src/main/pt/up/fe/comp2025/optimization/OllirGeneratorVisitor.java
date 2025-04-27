@@ -214,7 +214,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         var retTypeNode = node.getChildren().stream()
                 .filter(c -> c.getKind().equals("Type"))
                 .findFirst().orElse(node.getChild(0));
-        code.append(ollirTypes.toOllirType(types.convertType(retTypeNode)))
+        code.append(ollirTypes.toOllirType(TypeUtils.convertType(retTypeNode)))
                 .append(" {\n");
 
         // Single pass over body
@@ -238,10 +238,22 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
                 if (!childCode.endsWith("\n")) code.append("\n");
             }
         }
+        boolean isVoid = node.getChildren().stream()
+                .filter(c -> c.getKind().equals("Type"))
+                .map(TypeUtils::convertType)
+                .anyMatch(t -> t.getName().equals("void"));
 
+        boolean hasReturn = node.getChildren().stream()
+                .anyMatch(c -> c.getKind().equals("ReturnStmt") || c.getKind().equals("RetStmt"));
+
+        if (isVoid && !hasReturn) {
+            code.append("   ret.V;\n");
+        }
         code.append("}\n\n");
         return code.toString();
     }
+
+
     private String visitClass(JmmNode node, Void unused) {
         StringBuilder code = new StringBuilder();
 
@@ -418,17 +430,18 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
 
     private String visitMethodCall(JmmNode node, Void unused) {
-        System.out.println("Entered visitMethodCall");
-        System.out.println("Node: " + node.toTree());
-
         String methodName = node.get("methodName");
-        var argNodes = node.getChildren();
         StringBuilder code = new StringBuilder();
 
-        if (node.getChild(0).get("name").equals("io") && methodName.equals("println")) {
+        // support both print and println
+        if (node.getChild(0).get("name").equals("io") &&
+                (methodName.equals("print") || methodName.equals("println"))) {
+
             var argExpr = exprVisitor.visit(node.getChild(1));
             code.append(argExpr.getComputation());
-            code.append("invokestatic(io, \"println\", ").append(argExpr.getCode()).append(").V;\n");
+            code.append("invokestatic(io, \"")
+                    .append(methodName).append("\", ")
+                    .append(argExpr.getCode()).append(").V;\n");
             return code.toString();
         } else {
             var caller = exprVisitor.visit(node.getChild(0));

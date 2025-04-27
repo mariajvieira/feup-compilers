@@ -46,6 +46,12 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
 
         addVisit("NewArray", this::visitNewArray);
         addVisit("ArrayLiteral", this::visitArrayLiteral);
+
+        // Boolean literal (TRUE|FALSE)
+        addVisit("Boolean", this::visitBoolean);
+        addVisit("True",    this::visitBoolean);
+        addVisit("False",   this::visitBoolean);
+
         // Fallback
         setDefaultVisit(this::defaultVisit);
     }
@@ -69,29 +75,76 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
         return new OllirExprResult(code);
     }
 
+    // In OllirExprGeneratorVisitor.java
     private OllirExprResult visitBinExpr(JmmNode node, Void unused) {
         var lhs = visit(node.getChild(0));
         var rhs = visit(node.getChild(1));
 
-        String op = node.get("op");
-        Type resultType = types.getExprType(node);
-        String ollirType = ollirTypes.toOllirType(resultType).substring(1);
+        String kind = node.getKind();
+        if (kind.equals("And")) {
+            String temp    = ollirTypes.nextTemp("andTmp");
+            String thenLbl = "then"   + ollirTypes.nextTemp("");
+            String endLbl  = "endif"  + ollirTypes.nextTemp("");
 
-        String tmp = ollirTypes.nextTemp();
-        String instr = tmp + "." + ollirType
+            StringBuilder code = new StringBuilder()
+                    .append(lhs.getComputation())
+                    .append("if (").append(lhs.getCode()).append(") goto ").append(thenLbl).append(";\n")
+                    .append(temp).append(".bool :=.bool 0.bool;\n")
+                    .append("goto ").append(endLbl).append(";\n")
+                    .append(thenLbl).append(":\n")
+                    .append(rhs.getComputation())
+                    .append(temp).append(".bool :=.bool ").append(rhs.getCode()).append(";\n")
+                    .append(endLbl).append(":\n");
+
+            return new OllirExprResult(temp + ".bool", code.toString());
+        }
+
+        if (kind.equals("Or")) {
+            String temp    = ollirTypes.nextTemp("orTmp");
+            String thenLbl = "then"  + ollirTypes.nextTemp("");
+            String endLbl  = "endif" + ollirTypes.nextTemp("");
+
+            StringBuilder code = new StringBuilder()
+                    .append(lhs.getComputation())
+                    .append("if (").append(lhs.getCode()).append(") goto ").append(endLbl).append(";\n")
+                    .append(rhs.getComputation())
+                    .append("if (").append(rhs.getCode()).append(") goto ").append(thenLbl).append(";\n")
+                    .append(temp).append(".bool :=.bool 0.bool;\n")
+                    .append("goto ").append(endLbl).append(";\n")
+                    .append(thenLbl).append(":\n")
+                    .append(temp).append(".bool :=.bool 1.bool;\n")
+                    .append(endLbl).append(":\n");
+
+            return new OllirExprResult(temp + ".bool", code.toString());
+        }
+
+        // All other binary operators
+        String rawOp;
+        switch (kind) {
+            case "AddSub", "MulDiv", "Compare" -> rawOp = node.get("op");
+            default                             -> throw new RuntimeException("Unknown binary op: " + kind);
+        }
+
+        Type resultType  = types.getExprType(node);
+        String ollirType = ollirTypes.toOllirType(resultType).substring(1);
+        String tmp       = ollirTypes.nextTemp();
+        String instr     = tmp + "." + ollirType
                 + " :=." + ollirType
                 + " " + lhs.getCode()
-                + " " + op + "." + ollirType
+                + " " + rawOp + "." + ollirType
                 + " " + rhs.getCode()
-                + ";\n";
-
-        String computation = lhs.getComputation()
-                + rhs.getComputation()
-                + instr;
+                + END_STMT;
+        String computation = lhs.getComputation() + rhs.getComputation() + instr;
 
         return new OllirExprResult(tmp + "." + ollirType, computation);
     }
 
+    private OllirExprResult visitBoolean(JmmNode node, Void unused) {
+     // grammar text is in "name"
+        String lit = node.get("name").equals("true") ? "1" : "0";
+        String code = lit + ".bool";
+        return new OllirExprResult(code);
+     }
     private OllirExprResult visitVarRef(JmmNode node, Void unused) {
         String name = node.get("name");
         Type   t    = types.getExprType(node);
