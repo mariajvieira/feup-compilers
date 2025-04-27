@@ -285,12 +285,17 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
 
     private String visitProgram(JmmNode node, Void unused) {
-
         StringBuilder code = new StringBuilder();
-
-        node.getChildren().stream()
-                .map(this::visit)
-                .forEach(code::append);
+        for (var child : node.getChildren()) {
+            if (child.getKind().equals("ImportDecl")) {
+                code.append(visit(child));
+            }
+        }
+        for (var child : node.getChildren()) {
+            if (child.getKind().equals("ClassDecl")) {
+                code.append(visit(child));
+            }
+        }
 
         return code.toString();
     }
@@ -328,26 +333,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         return new OllirExprResult(temp + ".i32", code.toString()).getComputation();
     }
-
-    private String visitArrayInit(JmmNode node, Void unused) {
-        int size = node.getNumChildren();
-        String temp = ollirTypes.nextTemp();
-
-        StringBuilder code = new StringBuilder();
-
-        code.append(temp).append(".array.i32 :=.array.i32 ")
-                .append("new(array, ").append(size).append(").array.i32;\n");
-
-        for (int i = 0; i < size; i++) {
-            var elemExpr = exprVisitor.visit(node.getChild(i));
-            code.append(elemExpr.getComputation());
-            code.append(temp).append("[").append(i).append("].i32 :=.i32 ")
-                    .append(elemExpr.getCode()).append(";\n");
-        }
-
-        return code.toString();
-    }
-
 
 
     private String visitArrayAssign(JmmNode node, Void unused) {
@@ -440,13 +425,11 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         StringBuilder code = new StringBuilder();
 
         if (node.getChild(0).get("name").equals("io") && methodName.equals("println")) {
-            // Handle io.println case
             var argExpr = exprVisitor.visit(node.getChild(1));
             code.append(argExpr.getComputation());
             code.append("invokestatic(io, \"println\", ").append(argExpr.getCode()).append(").V;\n");
             return code.toString();
         } else {
-            // Handle other method calls
             var caller = exprVisitor.visit(node.getChild(0));
             code.append(caller.getComputation());
 
@@ -470,5 +453,4 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             return code.toString();
         }
     }
-
 }
