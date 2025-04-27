@@ -46,6 +46,7 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
 
         addVisit("NewArray", this::visitNewArray);
         addVisit("ArrayLiteral", this::visitArrayLiteral);
+        addVisit("ArrayAccess", this::visitArrayAccess);
 
         // Boolean literal (TRUE|FALSE)
         addVisit("Boolean", this::visitBoolean);
@@ -75,7 +76,6 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
         return new OllirExprResult(code);
     }
 
-    // In OllirExprGeneratorVisitor.java
     private OllirExprResult visitBinExpr(JmmNode node, Void unused) {
         var lhs = visit(node.getChild(0));
         var rhs = visit(node.getChild(1));
@@ -118,7 +118,6 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
             return new OllirExprResult(temp + ".bool", code.toString());
         }
 
-        // All other binary operators
         String rawOp;
         switch (kind) {
             case "AddSub", "MulDiv", "Compare" -> rawOp = node.get("op");
@@ -180,6 +179,22 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
                 .append(").").append(suffix.substring(1))
                 .append(";\n");
         return new OllirExprResult(temp + suffix, code.toString());
+    }
+
+    private OllirExprResult visitArrayAccess(JmmNode node, Void unused) {
+        var arrayExpr = visit(node.getChild(0));
+        var indexExpr = visit(node.getChild(1));
+
+        StringBuilder code = new StringBuilder();
+        code.append(arrayExpr.getComputation());
+        code.append(indexExpr.getComputation());
+
+        String temp = ollirTypes.nextTemp();
+        code.append(temp).append(".i32 :=.i32 ")
+                .append(arrayExpr.getCode()).append("[")
+                .append(indexExpr.getCode()).append("].i32;\n");
+
+        return new OllirExprResult(temp + ".i32", code.toString());
     }
 
     /**
