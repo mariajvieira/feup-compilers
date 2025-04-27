@@ -224,8 +224,9 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             switch (stmtKind) {
                 case "VarDecl"      -> childCode = visit(child, unused);
                 case "AssignStmt"   -> childCode = visitAssignStmt(child, unused);
-                case "ReturnStmt", "RetStmt"
-                        -> childCode = visitReturn(child, unused);
+                case "ReturnStmt", "RetStmt"    -> childCode = visitReturn(child, unused);
+                case "WhileStmt"    -> childCode = visitWhileStmt(child, unused);
+                case "IfStmt"       -> childCode = visitIfStmt(child, unused);
                 case "MethodCall"   -> childCode = visitMethodCall(child, unused);
                 case "ExprStmt"     -> childCode = visitExprStmt(child, unused);
                 default -> {
