@@ -41,11 +41,24 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
         addVisit("And",    this::visitBinExpr);
         addVisit("Or",     this::visitBinExpr);
 
+        addVisit("Length", this::visitLength);
+
 
         addVisit("NewArray", this::visitNewArray);
         addVisit("ArrayLiteral", this::visitArrayLiteral);
         // Fallback
         setDefaultVisit(this::defaultVisit);
+    }
+
+
+    private OllirExprResult visitLength(JmmNode node, Void unused) {
+        var arrayExpr = visit(node.getChild(0));
+        StringBuilder code = new StringBuilder();
+        code.append(arrayExpr.getComputation());
+        String temp = ollirTypes.nextTemp();
+        code.append(temp).append(".i32 :=.i32 arraylength(")
+                .append(arrayExpr.getCode()).append(").i32;\n");
+        return new OllirExprResult(temp + ".i32", code.toString());
     }
 
     private OllirExprResult visitInteger(JmmNode node, Void unused) {

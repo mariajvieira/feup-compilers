@@ -195,67 +195,35 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
 
     private String visitMethodDecl(JmmNode node, Void unused) {
-        StringBuilder code = new StringBuilder(".method ");
+        System.out.println("Entered visitMethodDecl");
+        System.out.println("Node: " + node.toTree());
 
-        if (node.getBoolean("isPublic", false)) code.append("public ");
-        if (node.getBoolean("isStatic", false)) code.append("static ");
+        String methodName = node.get("name");
+        String methodSignature = methodName;
+        boolean isStatic = node.getOptional("isStatic").map(Boolean::parseBoolean).orElse(false);
 
-        code.append(node.get("name")).append("(");
+        StringBuilder code = new StringBuilder();
 
-        // parameters
-        node.getChildren().stream()
-                .filter(c -> c.getKind().equals("ParamList"))
-                .findFirst()
-                .ifPresent(p -> {
-                    String params = p.getChildren().stream()
-                            .map(this::visit)
-                            .collect(Collectors.joining(", "));
-                    code.append(params);
-                });
-        code.append(")");
+        Type returnType = types.getExprType(node);
+        String returnTypeStr = ollirTypes.toOllirType(returnType);
 
-        // return type
-        Type retType = types.convertType(
-                node.getChildren().stream()
-                        .filter(c -> c.getKind().equals("Type"))
-                        .findFirst().orElse(node.getChild(0))
-        );
-        code.append(ollirTypes.toOllirType(retType)).append(" {\n");
+        code.append(".method public static main(args.array.String).V {\n");
 
-        for (var child : node.getChildren()) {
-            if (child.getKind().equals("Type") ||
-                    child.getKind().equals("ParamList"))
-                continue;
-
-            System.out.println("Processing node in method body: " + child.getKind());
-            String childCode = visit(child);
-            if (!childCode.isEmpty()) {
-                code.append("   ").append(childCode);
-            }
-        }
         for (var child : node.getChildren()) {
             if (child.getKind().equals("VarDecl")) {
-                code.append("   ").append(visit(child, unused));
-            }
-        }
-        for (var child : node.getChildren()) {
-            if (child.getKind().equals("AssignStmt")) {
-                var assignCode = visitAssignStmt(child, unused);
-                code.append("   ").append(assignCode);
-            }
-        }
-        for (var child : node.getChildren()) {
-            if (child.getKind().equals("ReturnStmt") || child.getKind().equals("RetStmt")) {
-                code.append("   ").append(visitReturn(child, unused));
-            }
-        }
-        for (var child : node.getChildren()) {
-            if (child.getKind().equals("MethodCall")) {
-                code.append("   ").append(visit(child, unused));
+                code.append(visit(child));
             }
         }
 
-        code.append("}\n\n");
+        for (var child : node.getChildren()) {
+            if (child.getKind().equals("AssignStmt") || child.getKind().equals("ExprStmt") || child.getKind().equals("MethodCall")) {
+                code.append(visit(child));
+            }
+        }
+
+        code.append("ret.V;\n");
+        code.append("}\n");
+
         return code.toString();
     }
 
@@ -303,12 +271,21 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
 
     private String visitProgram(JmmNode node, Void unused) {
-
         StringBuilder code = new StringBuilder();
 
-        node.getChildren().stream()
-                .map(this::visit)
-                .forEach(code::append);
+        // Add import declarations
+        for (var child : node.getChildren()) {
+            if (child.getKind().equals("ImportDecl")) {
+                code.append(visit(child));
+            }
+        }
+
+        // Add class declaration
+        for (var child : node.getChildren()) {
+            if (child.getKind().equals("ClassDecl")) {
+                code.append(visit(child));
+            }
+        }
 
         return code.toString();
     }
@@ -346,26 +323,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         return new OllirExprResult(temp + ".i32", code.toString()).getComputation();
     }
-
-    private String visitArrayInit(JmmNode node, Void unused) {
-        int size = node.getNumChildren();
-        String temp = ollirTypes.nextTemp();
-
-        StringBuilder code = new StringBuilder();
-
-        code.append(temp).append(".array.i32 :=.array.i32 ")
-                .append("new(array, ").append(size).append(").array.i32;\n");
-
-        for (int i = 0; i < size; i++) {
-            var elemExpr = exprVisitor.visit(node.getChild(i));
-            code.append(elemExpr.getComputation());
-            code.append(temp).append("[").append(i).append("].i32 :=.i32 ")
-                    .append(elemExpr.getCode()).append(";\n");
-        }
-
-        return code.toString();
-    }
-
 
 
     private String visitArrayAssign(JmmNode node, Void unused) {
@@ -457,11 +414,19 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         var argNodes = node.getChildren();
         StringBuilder code = new StringBuilder();
 
-        if (node.getChild(0).get("name").equals("io") && methodName.equals("println")) {
-            // Handle io.println case
-            var argExpr = exprVisitor.visit(node.getChild(1));
-            code.append(argExpr.getComputation());
-            code.append("invokestatic(io, \"println\", ").append(argExpr.getCode()).append(").V;\n");
+        JmmNode firstChild = node.getChild(0);
+
+        System.out.println("First child kind: " + firstChild.getKind());
+        System.out.println("First child attributes: " + firstChild.getAttributes());
+
+        if (firstChild.getKind().equals("Id") && firstChild.hasAttribute("name") && firstChild.get("name").equals("ioPlus") && methodName.equals("printResult")) {
+            if (node.getNumChildren() > 1) {
+                var argExpr = exprVisitor.visit(node.getChild(1));
+                code.append(argExpr.getComputation());
+                code.append("invokestatic(ioPlus, \"printResult\", ").append(argExpr.getCode()).append(").V;\n");
+            } else {
+                code.append("invokestatic(ioPlus, \"printResult\", ).V;\n");
+            }
             return code.toString();
         } else {
             // Handle other method calls
