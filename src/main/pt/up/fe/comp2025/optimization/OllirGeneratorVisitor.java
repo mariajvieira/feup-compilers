@@ -105,31 +105,52 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
     }
 
 
+    // File: src/main/pt/up/fe/comp2025/optimization/OllirGeneratorVisitor.java
     private String visitAssignStmt(JmmNode node, Void unused) {
-        StringBuilder code = new StringBuilder();
-        var left = node.getChild(0);
-        String varName = left.get("name");
-        Type thisType = types.getExprType(left);
-        String typeString = ollirTypes.toOllirType(thisType);
+        // left-hand side and right-hand side
+        var leftNode  = node.getChild(0);
+        var valueNode = node.getChild(1);
 
-        var value = node.getChild(1);
-        var rhs = exprVisitor.visit(value);
-        code.append(rhs.getComputation());
+        // Array‐element assignment
+        if (leftNode.getKind().equals("ArrayAccess")) {
+            // inside the ArrayAccess node: [ arrayExpr, indexExpr ]
+            var arrayExpr = leftNode.getChild(0);
+            var idxExpr   = leftNode.getChild(1);
 
-        String methodName = node.getAncestor(METHOD_DECL).map(n -> n.get("name")).orElse("");
-        boolean isLocalOrParam = table.getLocalVariables(methodName).stream().anyMatch(v -> v.getName().equals(varName))
-                || table.getParameters(methodName).stream().anyMatch(v -> v.getName().equals(varName));
+            var idxRes = exprVisitor.visit(idxExpr);
+            var valRes = exprVisitor.visit(valueNode);
 
-        if (!isLocalOrParam && node.getAncestor(CLASS_DECL).isPresent()
-                && table.getFields().stream().anyMatch(f -> f.getName().equals(varName))) {
+            String arrName = arrayExpr.get("name"); // bare identifier
+            StringBuilder code = new StringBuilder();
+            code
+                    .append(idxRes.getComputation())
+                    .append(valRes.getComputation())
+                    .append(arrName)
+                    .append("[")
+                    .append(idxRes.getCode())
+                    .append("].i32 :=.i32 ")
+                    .append(valRes.getCode())
+                    .append(";\n");
 
-            code.append("putfield(this, ").append(varName).append(typeString)
-                    .append(", ").append(rhs.getCode()).append(").V;\n");
-        } else {
-            code.append(varName).append(typeString)
-                    .append(" :=").append(typeString).append(" ")
-                    .append(rhs.getCode()).append(";\n");
+            return code.toString();
         }
+
+        // Regular variable assignment (unchanged)
+        StringBuilder code = new StringBuilder();
+        String varName    = leftNode.get("name");
+        Type   thisType   = types.getExprType(leftNode);
+        String typeString = ollirTypes.toOllirType(thisType);
+        var rhsResult     = exprVisitor.visit(valueNode);
+
+        code
+                .append(rhsResult.getComputation())
+                .append(varName)
+                .append(typeString)
+                .append(" :=.")
+                .append(typeString.substring(1))
+                .append(" ")
+                .append(rhsResult.getCode())
+                .append(";\n");
 
         return code.toString();
     }
@@ -353,19 +374,21 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         var idxNode = node.getChild(1);
         var valNode = node.getChild(2);
 
-        var arrExpr = exprVisitor.visit(arrNode);
-        var idxExpr = exprVisitor.visit(idxNode);
-        var valExpr = exprVisitor.visit(valNode);
+        var idxRes = exprVisitor.visit(idxNode);
+        var valRes = exprVisitor.visit(valNode);
 
+        String arrName = arrNode.get("name");           // just the identifier
         StringBuilder code = new StringBuilder();
-        code.append(arrExpr.getComputation())
-                .append(idxExpr.getComputation())
-                .append(valExpr.getComputation());
+        code.append(idxRes.getComputation())
+                .append(valRes.getComputation());
 
-        code.append(arrExpr.getCode()).append("[")
-                .append(idxExpr.getCode()).append("]").append(".i32")
-                .append(" :=.i32 ")
-                .append(valExpr.getCode()).append(";\n");
+        // emit: a[<idx>].i32 :=.i32 <value>;
+        code.append(arrName)
+                .append("[")
+                .append(idxRes.getCode())
+                .append("].i32 :=.i32 ")
+                .append(valRes.getCode())
+                .append(";\n");
 
         return code.toString();
     }
@@ -428,43 +451,38 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         return code.toString();
     }
 
-
     private String visitMethodCall(JmmNode node, Void unused) {
+        var callerNode = node.getChild(0);
+        var callerRes  = exprVisitor.visit(callerNode);
+        StringBuilder code = new StringBuilder(callerRes.getComputation());
+        StringBuilder args = new StringBuilder();
+        for (int i = 1; i < node.getNumChildren(); i++) {
+            var argRes = exprVisitor.visit(node.getChild(i));
+            code.append(argRes.getComputation());
+            if (i > 1) args.append(", ");
+            args.append(argRes.getCode());
+        }
+
+        String callerName = callerNode.get("name");
         String methodName = node.get("methodName");
-        StringBuilder code = new StringBuilder();
 
-        // support both print and println
-        if (node.getChild(0).get("name").equals("io") &&
-                (methodName.equals("print") || methodName.equals("println"))) {
-
-            var argExpr = exprVisitor.visit(node.getChild(1));
-            code.append(argExpr.getComputation());
-            code.append("invokestatic(io, \"")
-                    .append(methodName).append("\", ")
-                    .append(argExpr.getCode()).append(").V;\n");
-            return code.toString();
-        } else {
-            var caller = exprVisitor.visit(node.getChild(0));
-            code.append(caller.getComputation());
-
-            StringBuilder args = new StringBuilder();
-            for (int i = 1; i < node.getNumChildren(); i++) {
-                var argExpr = exprVisitor.visit(node.getChild(i));
-                code.append(argExpr.getComputation());
-                if (i > 1) args.append(", ");
-                args.append(argExpr.getCode());
-            }
-
-            Type returnType = types.getExprType(node);
-            String typeStr = ollirTypes.toOllirType(returnType);
-
-            code.append("invokevirtual(")
-                    .append(caller.getCode()).append(", \"")
-                    .append(methodName).append("\", ")
-                    .append(args).append(")")
-                    .append(typeStr).append(";\n");
-
+        // Special case for io.println -> invokestatic
+        if (callerName.equals("io") && methodName.equals("println")) {
+            code.append("invokestatic(io")
+                    .append(", \"println\"")
+                    .append(args.length() > 0 ? ", " + args : "")
+                    .append(").V;\n");
             return code.toString();
         }
+
+        // existing fallback to invokevirtual
+        Type returnType = types.getExprType(node);
+        String typeStr  = ollirTypes.toOllirType(returnType);
+        code.append("invokevirtual(")
+                .append(callerRes.getCode())
+                .append(", \"").append(methodName).append("\"")
+                .append(args.length() > 0 ? ", " + args : "")
+                .append(")").append(typeStr).append(";\n");
+        return code.toString();
     }
 }
