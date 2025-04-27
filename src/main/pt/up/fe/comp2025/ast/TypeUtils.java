@@ -62,12 +62,11 @@ public class TypeUtils {
             case "ArrayAccess" -> newIntType();
             case "ArrayLiteral" -> new Type("int", true);
             case "MethodCall" -> {
-                var methodName = expr.get("name");
+                var methodName = expr.get("methodName");
                 var returnType = table.getReturnType(methodName);
                 if (returnType != null) {
                     yield returnType;
                 } else {
-                    // Check caller; if imported, assume method exists and returns int.
                     JmmNode callerNode = expr.getChildren().get(0);
                     Type callerType = getExprType(callerNode);
                     if (isImported(callerType.getName())) {
@@ -102,7 +101,7 @@ public class TypeUtils {
         for (var field : table.getFields()) {
             if (field.getName().equals(varName)) return field.getType();
         }
-        return null; // Se não encontrar, devolve null
+        return null;
     }
 
     private boolean isImported(String typeName) {

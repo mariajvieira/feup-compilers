@@ -53,14 +53,14 @@ varDecl
 
 type locals[boolean isArray=false]
     : name=INT ('[' ']' {$isArray=true;})?       // int, int[]
-    | name=BOOLEAN ('[' ']' {$isArray=true;})?                   // boolean, boolean[]
-    | name=STRING ('[' ']' {$isArray=true;})?                    // String, String[]
-    | name=ID ('[' ']' {$isArray=true;})?      // class name or array
-    | name=VOID                                 // void (for methods)
-    | name=INT '...' {$isArray=true;}           // int varargs
-    | name=BOOLEAN '...' {$isArray=true;}       // boolean varargs
-    | name=STRING '...' {$isArray=true;}        // String varargs
-    | name=ID '...' {$isArray=true;}            // class varargs
+    | name=BOOLEAN ('[' ']' {$isArray=true;})?   // boolean, boolean[]
+    | name=STRING ('[' ']' {$isArray=true;})?    // String, String[]
+    | name=ID ('[' ']' {$isArray=true;})?        // class name or array
+    | name=VOID                                  // void (for methods)
+    | name=INT '...' {$isArray=true;}            // int varargs
+    | name=BOOLEAN '...' {$isArray=true;}        // boolean varargs
+    | name=STRING '...' {$isArray=true;}         // String varargs
+    | name=ID '...' {$isArray=true;}             // class varargs
     ;
 
 methodDecl locals[boolean isPublic=false, boolean isStatic=false]
@@ -108,7 +108,7 @@ expr
     | expr '[' expr ']'                       # ArrayAccess
     | NEW name=INT '[' expr ']'               # NewArray
     | expr '.' 'length'                       # Length
-    | expr '.' name=ID '(' (expr(',' expr)*)? ')'  # MethodCall
+    | expr '.' methodName=ID '(' (expr(',' expr)*)? ')'  # MethodCall
     | NEW name=ID '(' ')'                     # NewObject
     | '(' expr ')'                            # Parenthesis
     | name=INTEGER                            # Int

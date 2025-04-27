@@ -32,7 +32,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
         addVisit("WhileStmt", this::visitWhileStmt);
         addVisit("ReturnStmt", this::visitReturnStmt);
         addVisit("MethodCall", this::visitMethodCall);
-        addVisit("ArrayLiteral", this::visitArrayLiteral); // Add visit for ArrayLiteral
+        addVisit("ArrayLiteral", this::visitArrayLiteral);
     }
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
@@ -41,9 +41,6 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
         return null;
     }
 
-
-
-    // ASSUME ARGUMENTS TEST
     private Void visitAssignStmt(JmmNode assignStmt, SymbolTable table) {
         JmmNode target = assignStmt.getChildren().get(0);
         JmmNode value = assignStmt.getChildren().get(1);
@@ -290,7 +287,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
 
     private Void visitMethodCall(JmmNode methodCall, SymbolTable table) {
         JmmNode caller = methodCall.getChildren().get(0);
-        String methodName = methodCall.get("name");
+        String methodName = methodCall.get("methodName");
         List<JmmNode> args = methodCall.getChildren().subList(1, methodCall.getChildren().size());
 
         Type callerType = typeUtils.getExprType(caller);

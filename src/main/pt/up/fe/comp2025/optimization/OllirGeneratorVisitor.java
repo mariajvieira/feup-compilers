@@ -44,29 +44,47 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
     @Override
     protected void buildVisitor() {
-
+        // Basic node types
         addVisit(PROGRAM, this::visitProgram);
         addVisit(CLASS_DECL, this::visitClass);
         addVisit(METHOD_DECL, this::visitMethodDecl);
         addVisit(PARAM, this::visitParam);
-        addVisit(RETURN_STMT, this::visitReturn);
-        addVisit(ASSIGN_STMT, this::visitAssignStmt);
 
-        addVisit(ARRAY_ACCESS, this::visitArrayAccess);
-        addVisit(ASSIGN_ARRAY_STMT, this::visitArrayAssign);
-        addVisit(IF_STMT, this::visitIfStmt);
-        addVisit(WHILE_STMT, this::visitWhileStmt);
-        addVisit(METHOD_CALL, this::visitMethodCall);
-        addVisit("MethodDecl", this::visitMethodDecl);
-        addVisit("ImportDecl", this::visitImportDecl);
-        setDefaultVisit(this::defaultVisit);
-        addVisit(PROGRAM, this::visitProgram);
-        addVisit(CLASS_DECL, this::visitClass);
-        addVisit(METHOD_DECL, this::visitMethodDecl);
-        addVisit(PARAM, this::visitParam);
+        // Statement types
+        addVisit("ExprStmt", this::visitExprStmt);
         addVisit("ReturnStmt", this::visitReturn);
         addVisit("RetStmt", this::visitReturn);
         addVisit(ASSIGN_STMT, this::visitAssignStmt);
+        addVisit(IF_STMT, this::visitIfStmt);
+        addVisit(WHILE_STMT, this::visitWhileStmt);
+
+        // Expression types
+        addVisit("MethodCall", this::visitMethodCall);
+        addVisit(METHOD_CALL, this::visitMethodCall);
+        addVisit(ARRAY_ACCESS, this::visitArrayAccess);
+        addVisit(ASSIGN_ARRAY_STMT, this::visitArrayAssign);
+
+        // Other
+        addVisit("ImportDecl", this::visitImportDecl);
+
+        // Default visitor for unhandled nodes
+        setDefaultVisit(this::defaultVisit);
+    }
+
+    private String visitExprStmt(JmmNode node, Void unused) {
+        System.out.println("ExprStmt node: " + node.toTree());
+
+        if (node.getNumChildren() > 0) {
+            JmmNode child = node.getChild(0);
+            System.out.println("ExprStmt child kind: " + child.getKind());
+
+            if (child.getKind().equals("MethodCall")) {
+                return visitMethodCall(child, unused);
+            }
+
+            return visit(child);
+        }
+        return "";
     }
 
     private String visitImportDecl(JmmNode node, Void unused) {
@@ -204,7 +222,17 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         );
         code.append(ollirTypes.toOllirType(retType)).append(" {\n");
 
-        // Visit the children of the method node to generate OLLIR code for the statements
+        for (var child : node.getChildren()) {
+            if (child.getKind().equals("Type") ||
+                    child.getKind().equals("ParamList"))
+                continue;
+
+            System.out.println("Processing node in method body: " + child.getKind());
+            String childCode = visit(child);
+            if (!childCode.isEmpty()) {
+                code.append("   ").append(childCode);
+            }
+        }
         for (var child : node.getChildren()) {
             if (child.getKind().equals("VarDecl")) {
                 code.append("   ").append(visit(child, unused));
@@ -294,11 +322,10 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
      * @return
      */
     private String defaultVisit(JmmNode node, Void unused) {
-
+        System.out.println("Visiting node kind: " + node.getKind());
         for (var child : node.getChildren()) {
             visit(child);
         }
-
         return "";
     }
 
@@ -423,66 +450,43 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
 
     private String visitMethodCall(JmmNode node, Void unused) {
+        System.out.println("Entered visitMethodCall");
+        System.out.println("Node: " + node.toTree());
+
         String methodName = node.get("methodName");
         var argNodes = node.getChildren();
         StringBuilder code = new StringBuilder();
 
-        System.out.println("MethodCall: " + methodName + ", Args: " + argNodes);
-
-        if (argNodes.size() > 0 && argNodes.get(0).get("name").equals("io") && methodName.equals("println")) {
-            StringBuilder params = new StringBuilder();
-
-            for (int i = 1; i < argNodes.size(); i++) {
-                var argExpr = exprVisitor.visit(argNodes.get(i));
-                code.append(argExpr.getComputation());
-                if (params.length() > 0) params.append(", ");
-                params.append(argExpr.getCode());
-            }
-
-            code.append("invokestatic(io, \"println\", ").append(params).append(").V;\n");
+        if (node.getChild(0).get("name").equals("io") && methodName.equals("println")) {
+            // Handle io.println case
+            var argExpr = exprVisitor.visit(node.getChild(1));
+            code.append(argExpr.getComputation());
+            code.append("invokestatic(io, \"println\", ").append(argExpr.getCode()).append(").V;\n");
             return code.toString();
         } else {
-            String invokedName;
-            String type;
+            // Handle other method calls
+            var caller = exprVisitor.visit(node.getChild(0));
+            code.append(caller.getComputation());
 
-            if (argNodes.size() == 1) {
-                invokedName = "this";
-                type = ".V";
-            } else {
-                invokedName = argNodes.get(0).get("name");
-                Type t = types.getExprType(argNodes.get(0));
-                type = ollirTypes.toOllirType(t);
+            StringBuilder args = new StringBuilder();
+            for (int i = 1; i < node.getNumChildren(); i++) {
+                var argExpr = exprVisitor.visit(node.getChild(i));
+                code.append(argExpr.getComputation());
+                if (i > 1) args.append(", ");
+                args.append(argExpr.getCode());
             }
 
-            if (invokedName.equals("this")) {
-                code.append("invokevirtual(this, \"").append(methodName).append("\",");
-                StringBuilder params = new StringBuilder();
-                for (int i = 1; i < argNodes.size(); i++) {
-                    var argExpr = exprVisitor.visit(argNodes.get(i));
-                    code.append(argExpr.getComputation());
-                    if (params.length() > 0) params.append(", ");
-                    params.append(argExpr.getCode());
-                }
-                code.append(params).append(").V;\n");
+            Type returnType = types.getExprType(node);
+            String typeStr = ollirTypes.toOllirType(returnType);
 
-            } else {
-                String tmpVar = ollirTypes.nextTemp();
-                StringBuilder params = new StringBuilder();
-                for (int i = 1; i < argNodes.size(); i++) {
-                    var argExpr = exprVisitor.visit(argNodes.get(i));
-                    code.append(argExpr.getComputation());
-                    if (params.length() > 0) params.append(", ");
-                    params.append(argExpr.getCode());
-                }
-                code.append(tmpVar).append(".i32 :=.i32 invokevirtual(")
-                        .append(invokedName).append(type).append(", \"").append(methodName).append("\", ")
-                        .append(params)
-                        .append(").i32;\n");
-            }
+            code.append("invokevirtual(")
+                    .append(caller.getCode()).append(", \"")
+                    .append(methodName).append("\", ")
+                    .append(args).append(")")
+                    .append(typeStr).append(";\n");
+
+            return code.toString();
         }
-
-        return code.toString();
     }
-
 
 }
