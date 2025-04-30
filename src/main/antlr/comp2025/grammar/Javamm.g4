@@ -41,9 +41,9 @@ qualifiedName
     ;
 
 classDecl
-    : CLASS name=ID (EXTENDS superClass=ID)? '{' 
-        (varDecl)* 
-        (methodDecl)* 
+    : CLASS name=ID (EXTENDS superClass=ID)? '{'
+        (varDecl)*
+        (methodDecl)*
       '}'
     ;
 
@@ -68,9 +68,9 @@ methodDecl locals[boolean isPublic=false, boolean isStatic=false]
       (STATIC {$isStatic=true;})?
       type name=ID
       '(' paramList? ')'
-      '{' 
-        (varDecl)* 
-        (stmt)* 
+      '{'
+        (varDecl)*
+        (stmt)*
         (RETURN expr? ';')?
       '}'
     ;
@@ -99,23 +99,50 @@ returnStmt
     ;
 
 expr
-    : expr '[' expr ']'                       # ArrayAccess
-    | '!' expr                                # Not
-    | expr op=('<'|'>'|'<='|'>='|'=='|'!=') expr  # Compare
-    | expr '&&' expr                          # And
-    | expr '||' expr                          # Or
-    | expr op=('*'|'/') expr                  # MulDiv
-    | expr op=('+'|'-') expr                  # AddSub
-    | '(' expr ')'                            # Parenthesis
-    | name=INTEGER                            # Int
-    | name=(TRUE|FALSE)                       # Boolean
-    | name=ID                                 # Id
-    | name=THIS                               # This
-    | NEW name=ID '(' ')'                     # NewObject
-    | NEW name=INT '[' expr ']'               # NewArray
-    | expr '.' 'length'                       # Length
-    | expr '.' methodName=ID '(' (expr(',' expr)*)? ')'  # MethodCall
-    | '[' arrayInit? ']'                      # ArrayLiteral
+    : logicalOr
+    ;
+
+logicalOr
+    : logicalAnd ( '||' logicalAnd )*  # Or
+    ;
+
+logicalAnd
+    : equality ( '&&' equality )*  # And
+    ;
+
+equality
+    : relational ( op=( '==' | '!=' ) relational )*   # EqualDiff
+    ;
+
+relational
+    : additive ( op=( '<' | '>' | '<=' | '>=' ) additive )*  # Compare
+    ;
+
+additive
+    : multiplicative ( op=( '+' | '-' ) multiplicative )*  # AddSub
+    ;
+
+multiplicative
+    : unary ( op=( '*' | '/' ) unary )*  # MulDiv
+    ;
+
+unary
+    : '!' unary                     # Not
+    | primary                       # PrimaryExpr
+    ;
+
+primary
+    : '(' expr ')'                              # Parenthesis
+    | NEW name=ID '(' ')'                            # NewObject
+    | NEW name=INT '[' expr ']'                      # NewArray
+    | primary '[' expr ']'                      # ArrayAccess
+    | primary '.' 'length'                      # Length
+    | primary '.' methodName=ID '(' (expr(',' expr)*)? ')'    # MethodCall
+    | name=ID                                        # Id
+    | name=THIS                                      # This
+    | name=INTEGER                                   # Int
+    | name=(TRUE|FALSE)                              # Boolean
+    | '[' arrayInit? ']'                        # ArrayLiteral
     ;
 
 arrayInit
