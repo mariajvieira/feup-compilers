@@ -341,4 +341,36 @@ public class OllirTest {
                 .filter(element -> element instanceof ArrayOperand).count();
         CpUtils.assertEquals("Number of array reads", 6, numArrayReads, result);
     }
+
+
+
+
+    // --------------------------
+    // ADDITIONAL TESTS
+    // --------------------------
+
+    @Test
+    public void arithmeticSimpleMul() {
+        var ollirResult = getOllirResult("arithmetic/Arithmetic_mul.jmm");
+        compileArithmetic(ollirResult.getOllirClass());
+        var method = CpUtils.getMethod(ollirResult, "foo");
+        CpUtils.assertHasOperation(OperationType.MUL, method, ollirResult);
+    }
+
+    @Test
+    public void arithmeticSimpleDiv() {
+        var ollirResult = getOllirResult("arithmetic/Arithmetic_div.jmm");
+        compileArithmetic(ollirResult.getOllirClass());
+        var method = CpUtils.getMethod(ollirResult, "foo");
+        CpUtils.assertHasOperation(OperationType.DIV, method, ollirResult);
+    }
+
+    @Test
+    public void arithmeticSimpleSub() {
+        var ollirResult = getOllirResult("arithmetic/Arithmetic_sub.jmm");
+        compileArithmetic(ollirResult.getOllirClass());
+        var method = CpUtils.getMethod(ollirResult, "foo");
+        CpUtils.assertHasOperation(OperationType.SUB, method, ollirResult);
+    }
+
 }

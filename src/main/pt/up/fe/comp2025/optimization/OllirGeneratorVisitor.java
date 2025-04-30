@@ -67,10 +67,8 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit(ARRAY_ACCESS, this::visitArrayAccess);
         addVisit(ASSIGN_ARRAY_STMT, this::visitArrayAssign);
 
-        // Other
         addVisit("ImportDecl", this::visitImportDecl);
 
-        // Default visitor for unhandled nodes
         setDefaultVisit(this::defaultVisit);
     }
 
@@ -112,7 +110,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         var leftNode  = node.getChild(0);
         var valueNode = node.getChild(1);
 
-        // Array‐element assignment (unchanged)
         if (leftNode.getKind().equals("ArrayAccess")) {
             var arrayExpr = leftNode.getChild(0);
             var idxExpr   = leftNode.getChild(1);
@@ -132,7 +129,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
                     .toString();
         }
 
-        // Regular var or field assignment
         String varName    = leftNode.get("name");
         var rhsRes        = exprVisitor.visit(valueNode);
         String suffix     = ollirTypes.toOllirType(types.getExprType(leftNode));
@@ -149,14 +145,12 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
                 .append(rhsRes.getComputation());
 
         if (isField && !isLocal && !isParam) {
-            // write to a class field (add dot before suffix)
             code.append("putfield(this, ")
                     .append(varName).append(suffix)
                     .append(", ").append(rhsRes.getCode())
                     .append(").").append(suffix.substring(1))
                     .append(";\n");
         } else {
-            // local or parameter
             code.append(varName).append(suffix)
                     .append(" :=.").append(suffix.substring(1))
                     .append(" ").append(rhsRes.getCode())
@@ -226,8 +220,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
     private String visitMethodDecl(JmmNode node, Void unused) {
         StringBuilder code = new StringBuilder();
-
-        // Method signature
         code.append(".method ");
         if (node.getBoolean("isPublic", false)) code.append("public ");
         if (node.getBoolean("isStatic", false)) code.append("static ");
@@ -247,7 +239,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         code.append(ollirTypes.toOllirType(TypeUtils.convertType(retTypeNode)))
                 .append(" {\n");
 
-        // Single pass over body
         for (var child : node.getChildren()) {
             String stmtKind = child.getKind();
             String childCode = "";
@@ -386,12 +377,11 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         var idxRes = exprVisitor.visit(idxNode);
         var valRes = exprVisitor.visit(valNode);
 
-        String arrName = arrNode.get("name");           // just the identifier
+        String arrName = arrNode.get("name");
         StringBuilder code = new StringBuilder();
         code.append(idxRes.getComputation())
                 .append(valRes.getComputation());
 
-        // emit: a[<idx>].i32 :=.i32 <value>;
         code.append(arrName)
                 .append("[")
                 .append(idxRes.getCode())
@@ -403,16 +393,13 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
     }
 
     private String visitIfStmt(JmmNode node, Void unused) {
-        // 1) Flatten nested if–else chain
         List<JmmNode> chain = new ArrayList<>();
         JmmNode cur = node;
         while (true) {
             chain.add(cur);
-            // Get the else‐branch node (might be a Block)
             JmmNode elseNode = cur.getNumChildren() > 2 ? cur.getChild(2) : null;
             JmmNode nextIf = null;
             if (elseNode != null) {
-                // Unwrap single‐child blocks
                 if (elseNode.getKind().equals(Kind.STMT.getNodeName()) ||
                         elseNode.getKind().equals("Block")) {
                     if (elseNode.getNumChildren() == 1 &&
@@ -431,7 +418,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         }
         int n = chain.size();
 
-        // 2) Prepare labels
         List<String> thenLabels = IntStream.range(0, n)
                 .mapToObj(i -> "then" + (n - 1 - i))
                 .collect(Collectors.toList());
@@ -441,7 +427,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         StringBuilder code = new StringBuilder();
 
-        // 3) Emit all tests
         for (int i = 0; i < n; i++) {
             var cond = exprVisitor.visit(chain.get(i).getChild(0));
             code.append(cond.getComputation());
@@ -449,7 +434,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
                     .append(thenLabels.get(i)).append(";\n");
         }
 
-        // 4) Default (last else) branch
         JmmNode lastElse = chain.get(n - 1).getNumChildren() > 2
                 ? chain.get(n - 1).getChild(2)
                 : null;
@@ -458,7 +442,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         }
         code.append("goto ").append(endifLabels.get(0)).append(";\n");
 
-        // 5) Emit then‐blocks in reverse order
         for (int i = 0; i < n; i++) {
             int idx = n - 1 - i;
             String thenLbl = thenLabels.get(idx);
@@ -482,21 +465,17 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         StringBuilder code = new StringBuilder();
 
-        // Loop condition
         code.append(labelCond).append(":\n")
                 .append(condExpr.getComputation());
 
-        // Conditional branch
         code.append("if (").append(condExpr.getCode())
                 .append(") goto ").append(labelBody).append(";\n")
                 .append("goto ").append(labelEnd).append(";\n");
 
-        // Loop body
         code.append(labelBody).append(":\n")
                 .append(visit(node.getChild(1)))
                 .append("goto ").append(labelCond).append(";\n");
 
-        // End of loop
         code.append(labelEnd).append(":\n");
 
         return code.toString();
@@ -517,7 +496,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         String callerName = callerNode.get("name");
         String methodName = node.get("methodName");
 
-        // Special case for io.println -> invokestatic
         if (callerName.equals("io") && methodName.equals("println")) {
             code.append("invokestatic(io")
                     .append(", \"println\"")
@@ -526,7 +504,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             return code.toString();
         }
 
-        // existing fallback to invokevirtual
         Type returnType = types.getExprType(node);
         String typeStr  = ollirTypes.toOllirType(returnType);
         code.append("invokevirtual(")

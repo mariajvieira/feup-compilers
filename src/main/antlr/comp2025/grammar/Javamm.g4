@@ -103,12 +103,13 @@ expr
     | expr op=('<'|'>'|'<='|'>='|'=='|'!=') expr  # Compare
     | expr '&&' expr                          # And
     | expr '||' expr                          # Or
+    | expr '.' methodName=ID '(' (expr(',' expr)*)? ')'  # MethodCall
     | expr op=('*'|'/') expr                  # MulDiv
     | expr op=('+'|'-') expr                  # AddSub
     | expr '[' expr ']'                       # ArrayAccess
     | NEW name=INT '[' expr ']'               # NewArray
     | expr '.' 'length'                       # Length
-    | expr '.' methodName=ID '(' (expr(',' expr)*)? ')'  # MethodCall
+
     | NEW name=ID '(' ')'                     # NewObject
     | '(' expr ')'                            # Parenthesis
     | name=INTEGER                            # Int
