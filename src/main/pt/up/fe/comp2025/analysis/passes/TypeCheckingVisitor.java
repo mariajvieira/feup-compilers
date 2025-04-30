@@ -19,22 +19,20 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
 
     @Override
     public void buildVisitor() {
-        addVisit(Kind.METHOD_DECL,     this::visitMethodDecl);
-        addVisit(Kind.ASSIGN_STMT,     this::visitAssignStmt);
-        addVisit(Kind.ADD_SUB,         this::visitArithmeticOp);
-        addVisit(Kind.MUL_DIV,         this::visitArithmeticOp);
-        addVisit(Kind.COMPARE,         this::visitCompare);
-        addVisit(Kind.EQUAL_DIFF,      this::visitEqualDiff);
-        addVisit(Kind.AND,             this::visitLogicalOp);
-        addVisit(Kind.OR,              this::visitLogicalOp);
-        addVisit(Kind.NOT,             this::visitNot);
-        addVisit(Kind.ARRAY_ACCESS,    this::visitArrayAccess);
-        addVisit(Kind.IF_STMT,         this::visitIfStmt);
-        addVisit(Kind.WHILE_STMT,      this::visitWhileStmt);
-        addVisit(Kind.RET_STMT,        this::visitReturnStmt);
-        addVisit(Kind.METHOD_CALL,     this::visitMethodCall);
-        addVisit(Kind.ARRAY_LITERAL,   this::visitArrayLiteral);
-        addVisit(Kind.LENGTH,          this::visitLength);
+        addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
+        addVisit("AssignStmt", this::visitAssignStmt);
+        addVisit("AddSub", this::visitArithmeticOp);
+        addVisit("MulDiv", this::visitArithmeticOp);
+        addVisit("Compare", this::visitCompare);
+        addVisit("And", this::visitLogicalOp);
+        addVisit("Or", this::visitLogicalOp);
+        addVisit("Not", this::visitNot);
+        addVisit("ArrayAccess", this::visitArrayAccess);
+        addVisit("IfStmt", this::visitIfStmt);
+        addVisit("WhileStmt", this::visitWhileStmt);
+        addVisit("ReturnStmt", this::visitReturnStmt);
+        addVisit("MethodCall", this::visitMethodCall);
+        addVisit("ArrayLiteral", this::visitArrayLiteral);
     }
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
@@ -65,13 +63,7 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
         return null;
     }
 
-    // File: src/main/pt/up/fe/comp2025/analysis/passes/TypeCheckingVisitor.java
     private Void visitArithmeticOp(JmmNode opNode, SymbolTable table) {
-        // Skip unary (no operator) cases
-        if (opNode.getNumChildren() < 2) {
-            return null;
-        }
-
         JmmNode left = opNode.getChildren().get(0);
         JmmNode right = opNode.getChildren().get(1);
 
@@ -103,73 +95,86 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
         return null;
     }
 
-
     private Void visitCompare(JmmNode compareNode, SymbolTable table) {
-        // No relational operator => nothing to check
-        if (compareNode.getNumChildren() < 2) {
-            return null;
-        }
-
-        // For binary or chained comparisons, check each operand pair
         JmmNode left = compareNode.getChildren().get(0);
-        for (int i = 1; i < compareNode.getNumChildren(); i++) {
-            JmmNode right = compareNode.getChildren().get(i);
+        JmmNode right = compareNode.getChildren().get(1);
 
-            var leftType  = typeUtils.getExprType(left);
-            var rightType = typeUtils.getExprType(right);
+        Type leftType = typeUtils.getExprType(left);
+        Type rightType = typeUtils.getExprType(right);
 
-            if (!isIntType(leftType) || leftType.isArray()) {
+        // '<', '>', '<=', '>=' ---->  int
+        if (compareNode.get("op").matches("<|>|<=|>=")) {
+            if (!isIntType(leftType)) {
                 addReport(Report.newError(
                         Stage.SEMANTIC,
-                        left.getLine(), left.getColumn(),
-                        "Comparison operator requires integer operands",
-                        null));
-            }
-            if (!isIntType(rightType) || rightType.isArray()) {
-                addReport(Report.newError(
-                        Stage.SEMANTIC,
-                        right.getLine(), right.getColumn(),
-                        "Comparison operator requires integer operands",
-                        null));
+                        compareNode.getLine(),
+                        compareNode.getColumn(),
+                        "Left operand of comparison operation must be of type 'int', but got '" +
+                                leftType.getName() + (leftType.isArray() ? "" : "") + "'",
+                        null
+                ));
             }
 
-            left = right;
+            if (!isIntType(rightType)) {
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        compareNode.getLine(),
+                        compareNode.getColumn(),
+                        "Right operand of comparison operation must be of type 'int', but got '" +
+                                rightType.getName() + (rightType.isArray() ? "" : "") + "'",
+                        null
+                ));
+            }
         }
+        //  '==', '!='
+        else {
+            if (!isTypeCompatible(leftType, rightType, table)) {
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        compareNode.getLine(),
+                        compareNode.getColumn(),
+                        "Incompatible types in equality operation: '" +
+                                leftType.getName() + (leftType.isArray() ? "" : "") + "' and '" +
+                                rightType.getName() + (rightType.isArray() ? "" : "") + "'",
+                        null
+                ));
+            }
+        }
+
         return null;
     }
-
 
     private Void visitLogicalOp(JmmNode logicalNode, SymbolTable table) {
-        // No operator => nothing to check
-        if (logicalNode.getNumChildren() < 2) {
-            return null;
-        }
-
-        // First operand
         JmmNode left = logicalNode.getChildren().get(0);
-        for (int i = 1; i < logicalNode.getNumChildren(); i++) {
-            JmmNode right = logicalNode.getChildren().get(i);
+        JmmNode right = logicalNode.getChildren().get(1);
 
-            Type leftType = typeUtils.getExprType(left);
-            Type rightType = typeUtils.getExprType(right);
+        Type leftType = typeUtils.getExprType(left);
+        Type rightType = typeUtils.getExprType(right);
 
-            if (!isBooleanType(leftType)) {
-                addReport(Report.newError(Stage.SEMANTIC,
-                        left.getLine(), left.getColumn(),
-                        "Logical operator requires boolean operands", null));
-            }
-            if (!isBooleanType(rightType)) {
-                addReport(Report.newError(Stage.SEMANTIC,
-                        right.getLine(), right.getColumn(),
-                        "Logical operator requires boolean operands", null));
-            }
-
-            // For chained ops, next left is current right
-            left = right;
+        if (!isBooleanType(leftType)) {
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    logicalNode.getLine(),
+                    logicalNode.getColumn(),
+                    "Left operand of logical operation must be of type 'boolean', but got '" +
+                            leftType.getName() + (leftType.isArray() ? "" : "") + "'",
+                    null
+            ));
         }
+
+        if (!isBooleanType(rightType)) {
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    logicalNode.getLine(),
+                    logicalNode.getColumn(),
+                    "Right operand of logical operation must be of type 'boolean', but got '" +
+                            rightType.getName() + (rightType.isArray() ? "" : "") + "'",
+                    null
+            ));
+        }
+
         return null;
     }
-
 
     private Void visitNot(JmmNode notNode, SymbolTable table) {
         JmmNode expr = notNode.getChildren().get(0);
@@ -467,45 +472,4 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
         System.out.println("Is " + typeName + " imported? " + result);
         return result;
     }
-
-
-    private Void visitEqualDiff(JmmNode node, SymbolTable table) {
-        var children = node.getChildren();
-        Type leftType = typeUtils.getExprType(children.get(0));
-        for (int i = 1; i < children.size(); i++) {
-            Type rightType = typeUtils.getExprType(children.get(i));
-            if (!leftType.getName().equals(rightType.getName())
-                    || leftType.isArray() != rightType.isArray()) {
-                addReport(Report.newError(
-                        Stage.SEMANTIC,
-                        children.get(i).getLine(),
-                        children.get(i).getColumn(),
-                        "Operands of '" + node.getKind() + "' must have same type",
-                        null
-                ));
-            }
-            leftType = rightType;
-        }
-        return null;
-    }
-
-
-    private Void visitLength(JmmNode node, SymbolTable table) {
-        JmmNode arrayExpr = node.getChildren().get(0);
-        Type arrayType = typeUtils.getExprType(arrayExpr);
-        if (!arrayType.isArray()) {
-            addReport(Report.newError(
-                    Stage.SEMANTIC,
-                    node.getLine(),
-                    node.getColumn(),
-                    "'.length' can only be applied to arrays, but got '" +
-                            arrayType.getName() + (arrayType.isArray() ? "[]" : "") + "'",
-                    null
-            ));
-        }
-        return null;
-    }
-
-
-
 }
