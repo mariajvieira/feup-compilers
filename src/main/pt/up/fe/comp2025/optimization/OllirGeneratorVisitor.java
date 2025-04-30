@@ -402,22 +402,36 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         return code.toString();
     }
 
-    // File: src/main/pt/up/fe/comp2025/optimization/OllirGeneratorVisitor.java
     private String visitIfStmt(JmmNode node, Void unused) {
         // 1) Flatten nested if–else chain
         List<JmmNode> chain = new ArrayList<>();
         JmmNode cur = node;
         while (true) {
             chain.add(cur);
-            if (cur.getNumChildren() > 2 && cur.getChild(2).getKind().equals(Kind.IF_STMT.getNodeName())) {
-                cur = cur.getChild(2);
+            // Get the else‐branch node (might be a Block)
+            JmmNode elseNode = cur.getNumChildren() > 2 ? cur.getChild(2) : null;
+            JmmNode nextIf = null;
+            if (elseNode != null) {
+                // Unwrap single‐child blocks
+                if (elseNode.getKind().equals(Kind.STMT.getNodeName()) ||
+                        elseNode.getKind().equals("Block")) {
+                    if (elseNode.getNumChildren() == 1 &&
+                            elseNode.getChild(0).getKind().equals(Kind.IF_STMT.getNodeName())) {
+                        nextIf = elseNode.getChild(0);
+                    }
+                } else if (elseNode.getKind().equals(Kind.IF_STMT.getNodeName())) {
+                    nextIf = elseNode;
+                }
+            }
+            if (nextIf != null) {
+                cur = nextIf;
             } else {
                 break;
             }
         }
         int n = chain.size();
 
-        // 2) Prepare labels: then(n-1)...then0 and endif0...endif(n-1)
+        // 2) Prepare labels
         List<String> thenLabels = IntStream.range(0, n)
                 .mapToObj(i -> "then" + (n - 1 - i))
                 .collect(Collectors.toList());
@@ -444,7 +458,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         }
         code.append("goto ").append(endifLabels.get(0)).append(";\n");
 
-        // 5) Emit then‐blocks in reverse order with matching endif labels
+        // 5) Emit then‐blocks in reverse order
         for (int i = 0; i < n; i++) {
             int idx = n - 1 - i;
             String thenLbl = thenLabels.get(idx);
@@ -457,6 +471,8 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         return code.toString();
     }
+
+
     private String visitWhileStmt(JmmNode node, Void unused) {
         String labelCond = "cond" + ollirTypes.nextTemp("");
         String labelBody = "body" + ollirTypes.nextTemp("");
