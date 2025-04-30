@@ -1,0 +1,15 @@
+ class MixedAssignments {
+     int total;
+     int[] arr;
+
+     public int process() {
+         int i;
+         i = 0;
+         while (i < arr.length) {
+             arr[i] = i * 2;
+             total = total + arr[i];
+             i = i + 1;
+         }
+         return 0;
+     }
+ }

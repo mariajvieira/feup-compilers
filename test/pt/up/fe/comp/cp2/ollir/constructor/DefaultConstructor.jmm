@@ -1,0 +1,4 @@
+class DefaultConstructor {
+    int x;
+    boolean y;
+}

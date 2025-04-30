@@ -1,0 +1,8 @@
+class FieldInit {
+    int a;
+    boolean b;
+
+    public int getA() {
+        return a;
+    }
+}

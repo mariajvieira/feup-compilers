@@ -1,0 +1,6 @@
+class ComplexFields {
+    int x;
+    boolean y;
+    String s;
+    int[] arr;
+}

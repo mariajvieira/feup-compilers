@@ -21,8 +21,10 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
 
     private final TypeUtils types;
     private final OptUtils ollirTypes;
+    private final SymbolTable table;
 
     public OllirExprGeneratorVisitor(SymbolTable table) {
+        this.table      = table;
         this.types = new TypeUtils(table);
         this.ollirTypes = new OptUtils(types);
         setDefaultValue(() -> OllirExprResult.EMPTY);
@@ -206,10 +208,23 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
         return new OllirExprResult(code);
      }
 
-     private OllirExprResult visitVarRef(JmmNode node, Void unused) {
-        String name = node.get("name");
-        Type   t    = types.getExprType(node);
-        String suffix = ollirTypes.toOllirType(t);
+    private OllirExprResult visitVarRef(JmmNode node, Void unused) {
+        String name   = node.get("name");
+        String suffix = ollirTypes.toOllirType(types.getExprType(node));
+        boolean isField = table.getFields().stream()
+                .anyMatch(f -> f.getName().equals(name));
+        if (isField) {
+            String tmp = ollirTypes.nextTemp();
+            StringBuilder code = new StringBuilder();
+            code.append(tmp).append(suffix)
+                    .append(" :=").append(suffix)
+                    .append(" getfield(this, ")
+                    .append(name).append(suffix).append(").")
+                    .append(suffix.substring(1))
+                    .append(END_STMT);
+            return new OllirExprResult(tmp + suffix, code.toString());
+        }
+        // local/parameter or literal
         return new OllirExprResult(name + suffix);
     }
 

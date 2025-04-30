@@ -8,6 +8,7 @@ import org.specs.comp.ollir.OperationType;
 import org.specs.comp.ollir.inst.*;
 import org.specs.comp.ollir.type.BuiltinKind;
 import pt.up.fe.comp.CpUtils;
+import pt.up.fe.comp.TestUtils;
 import pt.up.fe.comp.jmm.ollir.OllirResult;
 import pt.up.fe.specs.util.SpecsIo;
 
@@ -372,5 +373,77 @@ public class OllirTest {
         var method = CpUtils.getMethod(ollirResult, "foo");
         CpUtils.assertHasOperation(OperationType.SUB, method, ollirResult);
     }
+
+    @Test
+    public void defaultConstructor() {
+        var ollir = getOllirResult("constructor/DefaultConstructor.jmm");
+        var code  = ollir.getOllirCode();
+
+        CpUtils.assertTrue(
+                "Expected DefaultConstructor to define only a default <init> call",
+                code.contains(".construct DefaultConstructor().V") &&
+                        code.contains("invokespecial(this, \"<init>\").V"),
+                ollir
+        );
+    }
+
+
+    @Test
+    public void fieldInitConstructor() {
+        var ollirResult = getOllirResult("constructor/FieldInit.jmm");
+        var code = ollirResult.getOllirCode();
+
+        CpUtils.assertTrue(
+                "Expected a .construct FieldInit().V block",
+                code.contains(".construct FieldInit().V"),
+                ollirResult
+        );
+        CpUtils.assertTrue(
+                "Expected invokespecial of <init>",
+                code.contains("invokespecial(this, \"<init>\").V;"),
+                ollirResult
+        );
+        CpUtils.assertTrue(
+                "Expected getfield for a",
+                code.contains("getfield(this, a.i32).i32"),
+                ollirResult
+        );
+    }
+
+    @Test
+    public void complexClassFields() {
+        OllirResult res = getOllirResult("fields/ComplexFields.jmm");
+        String code = res.getOllirCode();
+
+        assertTrue(code.contains(".field public x.i32"));
+        assertTrue(code.contains(".field public y.bool"));
+        assertTrue(code.contains(".field public s.String"));
+        assertTrue(code.contains(".field public arr.array.i32"));
+        assertTrue(code.contains("invokespecial(this, \"<init>\").V;"));
+    }
+
+    @Test
+    public void mixedAssignments() {
+        var result = getOllirResult("fields/MixedAssignments.jmm");
+        var classUnit = result.getOllirClass();
+        assertEquals(
+                "Class name not what was expected",
+                "MixedAssignments",
+                classUnit.getClassName()
+        );
+
+        var code = result.getOllirCode();
+        assertTrue(
+                "Expected a getfield in MixedAssignments constructor",
+                code.contains("getfield(")
+        );
+        assertTrue(
+                "Expected a putfield in MixedAssignments constructor",
+                code.contains("putfield(")
+        );
+    }
+
+
+
 
 }
