@@ -67,13 +67,10 @@ public class TypeUtils {
                 if (returnType != null) {
                     yield returnType;
                 } else {
-                    // Verifica se o método é chamado em um objeto de tipo importado
                     JmmNode callerNode = expr.getChildren().get(0);
                     Type callerType = getExprType(callerNode);
-                    if (isImported(callerType.getName()) ||
-                            (table.getSuper() != null && callerType.getName().equals(table.getClassName()))) {
-                        // Se a classe é importada ou é uma superclasse, assume o tipo de retorno como válido
-                        yield callerType;  // Retorna o tipo do caller ao invés de unknown
+                    if (isImported(callerType.getName())) {
+                        yield newIntType();
                     } else {
                         yield new Type("unknown", false);
                     }
