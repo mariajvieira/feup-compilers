@@ -443,6 +443,18 @@ public class OllirTest {
         );
     }
 
+    @Test
+    public void arithmeticComplex() {
+        var ollirResult = getOllirResult("arithmetic/ComplexArithmetic.jmm");
+        compileArithmetic(ollirResult.getOllirClass());
+        var methodFoo = CpUtils.getMethod(ollirResult, "foo");
+        assertNotNull("Method foo not found", methodFoo);
+        var binOpInst = methodFoo.getInstructions().stream()
+                .filter(inst -> inst instanceof BinaryOpInstruction)
+                .findFirst();
+        assertTrue("Could not find a binary op instruction in method foo", binOpInst.isPresent());
+    }
+
 
 
 

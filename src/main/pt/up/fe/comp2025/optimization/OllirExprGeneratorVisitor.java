@@ -224,7 +224,6 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
                     .append(END_STMT);
             return new OllirExprResult(tmp + suffix, code.toString());
         }
-        // local/parameter or literal
         return new OllirExprResult(name + suffix);
     }
 

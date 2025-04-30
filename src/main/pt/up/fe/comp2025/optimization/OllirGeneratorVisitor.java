@@ -160,6 +160,8 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         return code.toString();
     }
+
+
     private String visitReturn(JmmNode node, Void unused) {
         JmmNode cur = node;
         while (true) {
@@ -183,23 +185,27 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             Type exprType = types.getExprType(cur);
             String suffix = ollirTypes.toOllirType(exprType);
 
-            var optName = cur.getOptional("name");
-            String varName = optName.orElse(null);
-            String methodName = node.getAncestor(METHOD_DECL).map(n -> n.get("name")).orElse("");
-            boolean isLocalOrParam = varName != null && (
-                    table.getLocalVariables(methodName).stream().anyMatch(v -> v.getName().equals(varName))
-                            || table.getParameters(methodName).stream().anyMatch(v -> v.getName().equals(varName))
-            );
-            if (varName != null && !isLocalOrParam &&
-                    table.getFields().stream().anyMatch(f -> f.getName().equals(varName))) {
-                String temp = ollirTypes.nextTemp();
-                code.append(temp).append(suffix)
-                        .append(" :=.").append(suffix.substring(1))
-                        .append(" getfield(this, ").append(varName).append(suffix)
-                        .append(").").append(suffix.substring(1)).append(";\n");
-                code.append("ret").append(suffix).append(" ").append(temp).append(suffix).append(";\n");
-            } else {
+            if (exprResult.getComputation().contains("getfield(")) {
                 code.append("ret").append(suffix).append(" ").append(operand).append(";\n");
+            } else {
+                var optName = cur.getOptional("name");
+                String varName = optName.orElse(null);
+                String methodName = node.getAncestor(METHOD_DECL).map(n -> n.get("name")).orElse("");
+                boolean isLocalOrParam = varName != null && (
+                        table.getLocalVariables(methodName).stream().anyMatch(v -> v.getName().equals(varName))
+                                || table.getParameters(methodName).stream().anyMatch(v -> v.getName().equals(varName))
+                );
+                if (varName != null && !isLocalOrParam &&
+                        table.getFields().stream().anyMatch(f -> f.getName().equals(varName))) {
+                    String temp = ollirTypes.nextTemp();
+                    code.append(temp).append(suffix)
+                            .append(" :=.").append(suffix.substring(1))
+                            .append(" getfield(this, ").append(varName).append(suffix)
+                            .append(").").append(suffix.substring(1)).append(";\n");
+                    code.append("ret").append(suffix).append(" ").append(temp).append(suffix).append(";\n");
+                } else {
+                    code.append("ret").append(suffix).append(" ").append(operand).append(";\n");
+                }
             }
         } else {
             code.append("ret.V;\n");
