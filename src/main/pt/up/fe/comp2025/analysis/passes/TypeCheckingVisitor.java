@@ -411,61 +411,44 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
     }
 
     private boolean isTypeCompatible(Type targetType, Type valueType, SymbolTable table) {
-        System.out.println("\n=== Symbol Table Debug ===");
-        System.out.println("Class: " + table.getClassName());
-        System.out.println("Super: " + table.getSuper());
-        System.out.println("Imports: " + table.getImports());
-        System.out.println("Methods: " + table.getMethods());
-        System.out.println("Fields: " + table.getFields());
+        // Se algum dos tipos for unknown, considera compatível se houver herança ou importação
+        if (valueType.getName().equals("unknown")) {
+            if (isImported(targetType.getName(), table) ||
+                    (table.getSuper() != null && targetType.getName().equals(table.getSuper()))) {
+                return true;
+            }
+        }
 
-        System.out.println("\nMethod Details:");
-        for (String method : table.getMethods()) {
-            System.out.println("\nMethod: " + method);
-            System.out.println("Return Type: " + table.getReturnType(method));
-            System.out.println("Parameters: " + table.getParameters(method));
-            System.out.println("Local Variables: " + table.getLocalVariables(method));
-        }
-        System.out.println("=======================\n");
-        // Same type and array dimension
-        if (isImported(targetType.getName(), table) &&
-                isImported(valueType.getName(), table)) {
-            System.out.println("Both types are imported, allowing assignment");
-            return true;
-        }
+        // Mesmos tipos e dimensões de array
         if (targetType.getName().equals(valueType.getName()) &&
                 targetType.isArray() == valueType.isArray()) {
-            System.out.println("Same type and array dimension, allowing assignment");
             return true;
         }
 
-        // For non-array types
+        // Para tipos não-array
         if (!targetType.isArray() && !valueType.isArray()) {
-            System.out.println("Checking non-array types");
-            // If both types are imported classes, allow assignment
+            // Se ambos os tipos são importados
             if (isImported(targetType.getName(), table) &&
                     isImported(valueType.getName(), table)) {
-                System.out.println("Both non-array types are imported, allowing assignment");
                 return true;
             }
 
-            // Check inheritance for current class
+            // Verifica herança
             if (valueType.getName().equals(table.getClassName()) &&
                     targetType.getName().equals(table.getSuper())) {
-                System.out.println("Found inheritance relationship, allowing assignment");
                 return true;
             }
         }
 
-        System.out.println("Types are not compatible");
         return false;
     }
 
     private boolean isImported(String typeName, SymbolTable table) {
-        System.out.println("Checking if " + typeName + " is imported");
-        boolean result = table.getImports().stream()
+        if (typeName == null || typeName.equals("unknown")) {
+            return false;
+        }
+        return table.getImports().stream()
                 .anyMatch(imp -> imp.equals(typeName) || imp.endsWith("." + typeName));
-        System.out.println("Is " + typeName + " imported? " + result);
-        return result;
     }
 
 
