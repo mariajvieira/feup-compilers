@@ -412,9 +412,14 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
 
     private boolean isTypeCompatible(Type targetType, Type valueType, SymbolTable table) {
         // Se algum dos tipos for unknown, considera compatível se houver herança ou importação
+        if (valueType.getName().equals("unknown")
+                && targetType.getName().equals(table.getClassName())) {
+            return true;
+        }
+
         if (valueType.getName().equals("unknown")) {
-            if (isImported(targetType.getName(), table) ||
-                    (table.getSuper() != null && targetType.getName().equals(table.getSuper()))) {
+            if (isImported(targetType.getName(), table)
+                    || (table.getSuper() != null && targetType.getName().equals(table.getSuper()))) {
                 return true;
             }
         }
