@@ -62,7 +62,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit("MethodCall", this::visitMethodCall);
         addVisit(METHOD_CALL, this::visitMethodCall);
         addVisit(ARRAY_ACCESS, this::visitArrayAccess);
-        addVisit(ASSIGN_ARRAY_STMT, this::visitArrayAssign);
+        //addVisit(ASSIGN_ARRAY_STMT, this::visitArrayAssign);
 
         // Other
         addVisit("ImportDecl", this::visitImportDecl);
@@ -160,7 +160,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         JmmNode cur = node;
         while (true) {
             var kind = cur.getKind();
-            if (kind.equals(Kind.RETURN_STMT.getNodeName()) || kind.equals("RetStmt")) {
+            if (kind.equals(Kind.RET_STMT.getNodeName()) || kind.equals("RetStmt")) {
                 if (cur.getNumChildren() == 0) {
                     break;
                 } else {

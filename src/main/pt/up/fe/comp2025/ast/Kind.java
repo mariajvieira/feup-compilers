@@ -15,25 +15,42 @@ import java.util.Set;
  */
 public enum Kind {
     PROGRAM,
+    IMPORT_DECL,
+    QUALIFIED_NAME,
     CLASS_DECL,
-    VAR_DECL,
+    VAR_DECL,         // type name=ID ';'
+    VAR_DECL_STMT,    // stmt : varDecl #VarDeclStmt
+    BLOCK,            // stmt : '{' stmt* '}' #Block
+    IF_STMT,          // stmt : 'if' ... #IfStmt
+    WHILE_STMT,       // stmt : 'while' ... #WhileStmt
+    ASSIGN_STMT,      // stmt : target=expr '=' value=expr ';' #AssignStmt
+    EXPR_STMT,        // stmt : expr ';' #ExprStmt
+    RET_STMT,         // stmt : returnStmt #RetStmt
     TYPE,
     METHOD_DECL,
+    PARAM_LIST,
     PARAM,
-    STMT,
-    ASSIGN_STMT,
-    RETURN_STMT,
-    EXPR,
-    BINARY_EXPR,
-    INTEGER_LITERAL,
-    VAR_REF_EXPR,
+    ADD_SUB,          // expr : ... #AddSub
+    MUL_DIV,          // expr : ... #MulDiv
+    COMPARE,          // expr : ... #Compare
+    EQUAL_DIFF,       // expr : ... #EqualDiff
+    AND,              // expr : ... #And
+    OR,               // expr : ... #Or
+    NOT,              // expr : ... #Not
+    PARENTHESIS,      // primary : '(' expr ')' #Parenthesis
+    NEW_OBJECT,       // primary : NEW name=ID '(' ')' #NewObject
+    NEW_ARRAY,        // primary : NEW name=INT '[' expr ']' #NewArray
+    ARRAY_ACCESS,     // primary : primary '[' expr ']' #ArrayAccess
+    LENGTH,           // primary : primary '.' 'length' #Length
+    METHOD_CALL,      // primary : primary '.' methodName=ID '(' ... ')' #MethodCall
+    ID,               // primary : name=ID #Id
+    THIS,             // primary : name=THIS #This
+    INT,              // primary : name=INTEGER #Int
+    BOOLEAN,          // primary : name=(TRUE|FALSE) #Boolean
+    ARRAY_LITERAL,    // primary : '[' arrayInit? ']' #ArrayLiteral
+    ARRAY_INIT;
 
-// ADDED
-    ARRAY_ACCESS,
-    ASSIGN_ARRAY_STMT,
-    IF_STMT,
-    WHILE_STMT,
-    METHOD_CALL;
+
 
 
     private final String name;
@@ -47,13 +64,10 @@ public enum Kind {
     }
 
     public static Kind fromString(String kind) {
-
-        for (Kind k : Kind.values()) {
-            if (k.getNodeName().equals(kind)) {
-                return k;
-            }
+        for (Kind k : values()) {
+            if (k.getNodeName().equals(kind)) return k;
         }
-        throw new RuntimeException("Could not convert string '" + kind + "' to a Kind");
+        throw new RuntimeException("Unknown kind '" + kind + "'");
     }
 
     public static List<String> toNodeName(Kind firstKind, Kind... otherKinds) {
@@ -83,7 +97,7 @@ public enum Kind {
      * @return
      */
     public boolean check(JmmNode node) {
-        return node.isInstance(this);
+        return node.getKind().equals(getNodeName());
     }
 
     /**
@@ -108,8 +122,6 @@ public enum Kind {
     public static boolean check(JmmNode node, Kind... kindsToTest) {
 
         for (Kind k : kindsToTest) {
-
-            // if any matches, return successfully
             if (k.check(node)) {
 
                 return true;
