@@ -98,26 +98,27 @@ returnStmt
     : RETURN expr? ';'
     ;
 
-expr
-    : '!' expr                                # Not
-    | expr op=('<'|'>'|'<='|'>='|'=='|'!=') expr  # Compare
-    | expr '&&' expr                          # And
-    | expr '||' expr                          # Or
-    | expr '.' methodName=ID '(' (expr(',' expr)*)? ')'  # MethodCall
-    | expr op=('*'|'/') expr                  # MulDiv
-    | expr op=('+'|'-') expr                  # AddSub
-    | expr '[' expr ']'                       # ArrayAccess
-    | NEW name=INT '[' expr ']'               # NewArray
-    | expr '.' 'length'                       # Length
 
-    | NEW name=ID '(' ')'                     # NewObject
-    | '(' expr ')'                            # Parenthesis
-    | name=INTEGER                            # Int
-    | name=(TRUE|FALSE)                       # Boolean
-    | name=ID                                 # Id
-    | name=THIS                               # This
-    | '[' arrayInit? ']'                      # ArrayLiteral
+expr
+    : expr '.' methodName=ID '(' (expr (',' expr)*)? ')'  # MethodCall
+    | expr '.' 'length'                                   # Length
+    | expr '[' expr ']'                                   # ArrayAccess
+    | '!' expr                                            # Not
+    | expr op=('*'|'/') expr                              # MulDiv
+    | expr op=('+'|'-') expr                              # AddSub
+    | expr op=('<'|'>'|'<='|'>='|'=='|'!=') expr          # Compare
+    | expr '&&' expr                                      # And
+    | expr '||' expr                                      # Or
+    | NEW name=INT '[' expr ']'                           # NewArray
+    | NEW name=ID '(' ')'                                 # NewObject
+    | '(' expr ')'                                        # Parenthesis
+    | '[' arrayInit? ']'                                  # ArrayLiteral
+    | name=INTEGER                                        # Int
+    | name=(TRUE|FALSE)                                   # Boolean
+    | name=ID                                             # Id
+    | name=THIS                                           # This
     ;
+
 
 arrayInit
     : expr (',' expr)*
