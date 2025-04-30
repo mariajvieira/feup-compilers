@@ -9,7 +9,6 @@ import pt.up.fe.comp2025.ast.TypeUtils;
 import java.util.ArrayList;
 import java.util.List;
 
-import static pt.up.fe.comp2025.ast.Kind.*;
 
 /**
  * Generates OLLIR code from JmmNodes that are expressions.
@@ -66,30 +65,27 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
     private OllirExprResult visitNewObject(JmmNode node, Void unused) {
         String className = node.get("name");
         String temp      = ollirTypes.nextTemp();
-        String fullTemp  = temp + "." + className;       // add suffix
+        String fullTemp  = temp + "." + className;
         StringBuilder code = new StringBuilder()
                 .append(fullTemp)
                 .append(" :=.").append(className)
                 .append(" new(").append(className).append(").")
                 .append(className).append(";\n")
                 .append("invokespecial(")
-                .append(fullTemp)                            // use fullTemp
+                .append(fullTemp)
                 .append(", \"<init>\").V;\n");
         return new OllirExprResult(fullTemp, code.toString());
     }
 
     private OllirExprResult visitMethodCall(JmmNode node, Void unused) {
-        // children: [caller, arg1, arg2, …]
         var callerRes = visit(node.getChild(0));
         StringBuilder code = new StringBuilder(callerRes.getComputation());
-        // collect arg codes
         List<String> argCodes = new ArrayList<>();
         for (int i = 1; i < node.getNumChildren(); i++) {
             var argRes = visit(node.getChild(i));
             code.append(argRes.getComputation());
             argCodes.add(argRes.getCode());
         }
-        // build invocation
         String methodName = node.get("methodName");
         Type   retType    = types.getExprType(node);
         String ollirType  = ollirTypes.toOllirType(retType).substring(1);
@@ -110,7 +106,6 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
     }
 
     private OllirExprResult visitArrayAccess(JmmNode node, Void unused) {
-        // children: [ arrayExpr, indexExpr ]
         var arrayRes = visit(node.getChild(0));
         var idxRes   = visit(node.getChild(1));
 
@@ -138,12 +133,11 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
     private OllirExprResult visitInteger(JmmNode node, Void unused) {
         var intType = TypeUtils.newIntType();
         String ollirIntType = ollirTypes.toOllirType(intType);
-        String value = node.get("name");                      // grammar stores lexeme in "name"
-        String code  = value + ollirIntType;                  // e.g. "1.i32"
+        String value = node.get("name");
+        String code  = value + ollirIntType;
         return new OllirExprResult(code);
     }
 
-    // In OllirExprGeneratorVisitor.java
     private OllirExprResult visitBinExpr(JmmNode node, Void unused) {
         var lhs = visit(node.getChild(0));
         var rhs = visit(node.getChild(1));
@@ -208,7 +202,6 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
     }
 
     private OllirExprResult visitBoolean(JmmNode node, Void unused) {
-     // grammar text is in "name"
         String lit = node.get("name").equals("true") ? "1" : "0";
         String code = lit + ".bool";
         return new OllirExprResult(code);

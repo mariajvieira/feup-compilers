@@ -7,7 +7,10 @@ import pt.up.fe.comp.jmm.ast.JmmNode;
 import pt.up.fe.comp2025.ast.Kind;
 import pt.up.fe.comp2025.ast.TypeUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static pt.up.fe.comp2025.ast.Kind.*;
 
@@ -105,57 +108,63 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
     }
 
 
-    // File: src/main/pt/up/fe/comp2025/optimization/OllirGeneratorVisitor.java
     private String visitAssignStmt(JmmNode node, Void unused) {
-        // left-hand side and right-hand side
         var leftNode  = node.getChild(0);
         var valueNode = node.getChild(1);
 
-        // Array‐element assignment
+        // Array‐element assignment (unchanged)
         if (leftNode.getKind().equals("ArrayAccess")) {
-            // inside the ArrayAccess node: [ arrayExpr, indexExpr ]
             var arrayExpr = leftNode.getChild(0);
             var idxExpr   = leftNode.getChild(1);
 
             var idxRes = exprVisitor.visit(idxExpr);
             var valRes = exprVisitor.visit(valueNode);
 
-            String arrName = arrayExpr.get("name"); // bare identifier
-            StringBuilder code = new StringBuilder();
-            code
+            return new StringBuilder()
                     .append(idxRes.getComputation())
                     .append(valRes.getComputation())
-                    .append(arrName)
+                    .append(arrayExpr.get("name"))
                     .append("[")
                     .append(idxRes.getCode())
                     .append("].i32 :=.i32 ")
                     .append(valRes.getCode())
-                    .append(";\n");
-
-            return code.toString();
+                    .append(";\n")
+                    .toString();
         }
 
-        // Regular variable assignment (unchanged)
-        StringBuilder code = new StringBuilder();
+        // Regular var or field assignment
         String varName    = leftNode.get("name");
-        Type   thisType   = types.getExprType(leftNode);
-        String typeString = ollirTypes.toOllirType(thisType);
-        var rhsResult     = exprVisitor.visit(valueNode);
+        var rhsRes        = exprVisitor.visit(valueNode);
+        String suffix     = ollirTypes.toOllirType(types.getExprType(leftNode));
+        String methodName = node.getAncestor(Kind.METHOD_DECL)
+                .map(n -> n.get("name")).orElse("");
+        boolean isLocal   = table.getLocalVariables(methodName)
+                .stream().anyMatch(s -> s.getName().equals(varName));
+        boolean isParam   = table.getParameters(methodName)
+                .stream().anyMatch(s -> s.getName().equals(varName));
+        boolean isField   = table.getFields()
+                .stream().anyMatch(f -> f.getName().equals(varName));
 
-        code
-                .append(rhsResult.getComputation())
-                .append(varName)
-                .append(typeString)
-                .append(" :=.")
-                .append(typeString.substring(1))
-                .append(" ")
-                .append(rhsResult.getCode())
-                .append(";\n");
+        StringBuilder code = new StringBuilder()
+                .append(rhsRes.getComputation());
+
+        if (isField && !isLocal && !isParam) {
+            // write to a class field (add dot before suffix)
+            code.append("putfield(this, ")
+                    .append(varName).append(suffix)
+                    .append(", ").append(rhsRes.getCode())
+                    .append(").").append(suffix.substring(1))
+                    .append(";\n");
+        } else {
+            // local or parameter
+            code.append(varName).append(suffix)
+                    .append(" :=.").append(suffix.substring(1))
+                    .append(" ").append(rhsRes.getCode())
+                    .append(";\n");
+        }
 
         return code.toString();
     }
-
-
     private String visitReturn(JmmNode node, Void unused) {
         JmmNode cur = node;
         while (true) {
@@ -393,35 +402,61 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         return code.toString();
     }
 
+    // File: src/main/pt/up/fe/comp2025/optimization/OllirGeneratorVisitor.java
     private String visitIfStmt(JmmNode node, Void unused) {
-        var condExpr = exprVisitor.visit(node.getChild(0));
-        String labelThen = "then" + ollirTypes.nextTemp("");
-        String labelElse = "else" + ollirTypes.nextTemp("");
-        String labelEnd = "endif" + ollirTypes.nextTemp("");
+        // 1) Flatten nested if–else chain
+        List<JmmNode> chain = new ArrayList<>();
+        JmmNode cur = node;
+        while (true) {
+            chain.add(cur);
+            if (cur.getNumChildren() > 2 && cur.getChild(2).getKind().equals(Kind.IF_STMT.getNodeName())) {
+                cur = cur.getChild(2);
+            } else {
+                break;
+            }
+        }
+        int n = chain.size();
+
+        // 2) Prepare labels: then(n-1)...then0 and endif0...endif(n-1)
+        List<String> thenLabels = IntStream.range(0, n)
+                .mapToObj(i -> "then" + (n - 1 - i))
+                .collect(Collectors.toList());
+        List<String> endifLabels = IntStream.range(0, n)
+                .mapToObj(i -> "endif" + i)
+                .collect(Collectors.toList());
 
         StringBuilder code = new StringBuilder();
-        code.append(condExpr.getComputation());
 
-        // Generate proper conditional branch
-        code.append("if (").append(condExpr.getCode())
-                .append(") goto ").append(labelThen).append(";\n")
-                .append("goto ").append(labelElse).append(";\n");
-
-        // Then branch
-        code.append(labelThen).append(":\n")
-                .append(visit(node.getChild(1)))
-                .append("goto ").append(labelEnd).append(";\n");
-
-        // Else branch
-        code.append(labelElse).append(":\n");
-        if (node.getNumChildren() > 2) {
-            code.append(visit(node.getChild(2)));
+        // 3) Emit all tests
+        for (int i = 0; i < n; i++) {
+            var cond = exprVisitor.visit(chain.get(i).getChild(0));
+            code.append(cond.getComputation());
+            code.append("if (").append(cond.getCode()).append(") goto ")
+                    .append(thenLabels.get(i)).append(";\n");
         }
 
-        code.append(labelEnd).append(":\n");
+        // 4) Default (last else) branch
+        JmmNode lastElse = chain.get(n - 1).getNumChildren() > 2
+                ? chain.get(n - 1).getChild(2)
+                : null;
+        if (lastElse != null) {
+            code.append(visit(lastElse));
+        }
+        code.append("goto ").append(endifLabels.get(0)).append(";\n");
+
+        // 5) Emit then‐blocks in reverse order with matching endif labels
+        for (int i = 0; i < n; i++) {
+            int idx = n - 1 - i;
+            String thenLbl = thenLabels.get(idx);
+            String endifLbl = endifLabels.get(i);
+            code.append(thenLbl).append(":\n");
+            code.append(visit(chain.get(idx).getChild(1)));
+            code.append("goto ").append(endifLbl).append(";\n");
+            code.append(endifLbl).append(":\n");
+        }
+
         return code.toString();
     }
-
     private String visitWhileStmt(JmmNode node, Void unused) {
         String labelCond = "cond" + ollirTypes.nextTemp("");
         String labelBody = "body" + ollirTypes.nextTemp("");
