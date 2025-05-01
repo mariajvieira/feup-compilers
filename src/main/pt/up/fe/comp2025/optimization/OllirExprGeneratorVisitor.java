@@ -47,13 +47,14 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
         addVisit("Or",     this::visitBinExpr);
 
         addVisit("Length", this::visitLength);
+        addVisit("Parenthesis", this::visitParenthesis);
 
 
         addVisit("NewArray", this::visitNewArray);
         addVisit("ArrayLiteral", this::visitArrayLiteral);
         addVisit("ArrayAccess", this::visitArrayAccess);
         addVisit("NewObject", this::visitNewObject);
-        addVisit("MethodCall", this::visitMethodCall);  // new
+        addVisit("MethodCall", this::visitMethodCall);
 
         // Boolean literal
         addVisit("Boolean", this::visitBoolean);
@@ -140,8 +141,17 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
     }
 
     private OllirExprResult visitBinExpr(JmmNode node, Void unused) {
-        var lhs = visit(node.getChild(0));
-        var rhs = visit(node.getChild(1));
+        JmmNode leftNode  = node.getChild(0);
+        if (leftNode.getKind().equals("Parenthesis")) {
+            leftNode = leftNode.getChild(0);
+        }
+        JmmNode rightNode = node.getChild(1);
+        if (rightNode.getKind().equals("Parenthesis")) {
+            rightNode = rightNode.getChild(0);
+        }
+
+        var lhs = visit(leftNode);
+        var rhs = visit(rightNode);
 
         String kind = node.getKind();
         if (kind.equals("And")) {
@@ -161,7 +171,6 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
 
             return new OllirExprResult(temp + ".bool", code.toString());
         }
-
         if (kind.equals("Or")) {
             String temp    = ollirTypes.nextTemp("orTmp");
             String thenLbl = "then"  + ollirTypes.nextTemp("");
@@ -181,24 +190,23 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
             return new OllirExprResult(temp + ".bool", code.toString());
         }
 
-        // All other binary operators
         String rawOp;
         switch (kind) {
-            case "AddSub", "MulDiv", "Compare" -> rawOp = node.get("op");
-            default                             -> throw new RuntimeException("Unknown binary op: " + kind);
+            case "AddSub" -> rawOp = node.get("op");    // "+" or "-"
+            case "MulDiv" -> rawOp = node.get("op");    // "*" or "/"
+            case "Compare"-> rawOp = node.get("op");    // "<", ">", "==", etc.
+            default        -> throw new RuntimeException("Unknown binop " + kind);
         }
 
-        Type resultType  = types.getExprType(node);
-        String ollirType = ollirTypes.toOllirType(resultType).substring(1);
-        String tmp       = ollirTypes.nextTemp();
-        String instr     = tmp + "." + ollirType
-                + " :=." + ollirType
-                + " " + lhs.getCode()
-                + " " + rawOp + "." + ollirType
-                + " " + rhs.getCode()
-                + END_STMT;
-        String computation = lhs.getComputation() + rhs.getComputation() + instr;
+        Type resultType    = types.getExprType(node);
+        String ollirType   = ollirTypes.toOllirType(resultType).substring(1);
+        String tmp         = ollirTypes.nextTemp();
+        String instr       = tmp + "." + ollirType
+                + " :=." + ollirType + " "
+                + lhs.getCode() + " " + rawOp + "." + ollirType + " "
+                + rhs.getCode() + END_STMT;
 
+        String computation = lhs.getComputation() + rhs.getComputation() + instr;
         return new OllirExprResult(tmp + "." + ollirType, computation);
     }
 
@@ -211,8 +219,18 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
     private OllirExprResult visitVarRef(JmmNode node, Void unused) {
         String name   = node.get("name");
         String suffix = ollirTypes.toOllirType(types.getExprType(node));
-        boolean isField = table.getFields().stream()
+
+        var methodNameOpt = node.getAncestor("MethodDecl").map(n -> n.get("name"));
+        String methodName = methodNameOpt.orElse("");
+
+        boolean isParam = table.getParameters(methodName)
+                .stream().anyMatch(p -> p.getName().equals(name));
+        boolean isLocal = table.getLocalVariables(methodName)
+                .stream().anyMatch(l -> l.getName().equals(name));
+        boolean isField = !isParam && !isLocal
+                && table.getFields().stream()
                 .anyMatch(f -> f.getName().equals(name));
+
         if (isField) {
             String tmp = ollirTypes.nextTemp();
             StringBuilder code = new StringBuilder();
@@ -224,6 +242,7 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
                     .append(END_STMT);
             return new OllirExprResult(tmp + suffix, code.toString());
         }
+
         return new OllirExprResult(name + suffix);
     }
 
@@ -255,6 +274,11 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
                 .append(").").append(suffix.substring(1))
                 .append(";\n");
         return new OllirExprResult(temp + suffix, code.toString());
+    }
+
+
+    private OllirExprResult visitParenthesis(JmmNode node, Void unused) {
+        return visit(node.getChild(0));
     }
 
     /**
