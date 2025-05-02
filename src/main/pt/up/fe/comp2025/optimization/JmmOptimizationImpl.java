@@ -26,9 +26,9 @@ public class JmmOptimizationImpl implements JmmOptimization {
 
     @Override
     public JmmSemanticsResult optimize(JmmSemanticsResult semanticsResult) {
-
-        //TODO: Do your AST-based optimizations here
-
+        var optimizer = new AstOptimizerVisitor();
+        optimizer.visit(semanticsResult.getRootNode());
+        System.out.println("optimized ast:\n" + semanticsResult.getRootNode().toTree());
         return semanticsResult;
     }
 
