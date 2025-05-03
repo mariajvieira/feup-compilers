@@ -22,7 +22,7 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
     protected void buildVisitor() {
         addVisit("AddSub",    this::foldIntBinOp);
         addVisit("MulDiv",    this::foldIntBinOp);
-        addVisit("Compare",   this::foldIntCompare);
+        //addVisit("Compare",   this::foldIntCompare);
         addVisit("And",       this::foldBoolBinOp);
         addVisit("Or",        this::foldBoolBinOp);
         addVisit("Id",        this::propagateId);
@@ -88,9 +88,16 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
     private Void propagateAssign(JmmNode node, Void unused) {
         var target = node.getChildren().get(0);
         var value  = node.getChildren().get(1);
-        String targetName = target.get("name");
 
-        boolean inLoop = node.getAncestor("WhileStmt").isPresent();
+        // only propagate simple identifiers, skip array accesses, field stores, etc.
+        if (!target.getKind().equals("Id")) {
+            // still recurse into the value subtree
+            visit(value);
+            return null;
+        }
+
+        String targetName = target.get("name");
+        boolean inLoop    = node.getAncestor("WhileStmt").isPresent();
 
         if (!inLoop && value.getKind().equals("Int")) {
             constants.put(targetName, value.get("name"));
@@ -101,6 +108,7 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
         visit(value);
         return null;
     }
+
 
     private Void propagateId(JmmNode node, Void unused) {
         if (node.getParent() != null && node.getParent().getKind().equals(Kind.ASSIGN_STMT.getNodeName())) {

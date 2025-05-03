@@ -107,60 +107,66 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
     }
 
 
+    // File: src/main/pt/up/fe/comp2025/optimization/OllirGeneratorVisitor.java
     private String visitAssignStmt(JmmNode node, Void unused) {
         var leftNode  = node.getChild(0);
         var valueNode = node.getChild(1);
 
-        if (leftNode.getKind().equals("ArrayAccess")) {
-            var arrayExpr = leftNode.getChild(0);
-            var idxExpr   = leftNode.getChild(1);
+        // Array store
+        if (leftNode.getKind().equals(Kind.ARRAY_ACCESS.getNodeName())) {
+            // first compute array reference and index
+            var arrayRes = exprVisitor.visit(leftNode.getChild(0));
+            var idxRes   = exprVisitor.visit(leftNode.getChild(1));
+            // then compute value
+            var valRes   = exprVisitor.visit(valueNode);
 
-            var idxRes = exprVisitor.visit(idxExpr);
-            var valRes = exprVisitor.visit(valueNode);
-
+            // build OLLIR store instruction
             return new StringBuilder()
+                    .append(arrayRes.getComputation())
                     .append(idxRes.getComputation())
                     .append(valRes.getComputation())
-                    .append(arrayExpr.get("name"))
-                    .append("[")
-                    .append(idxRes.getCode())
-                    .append("].i32 :=.i32 ")
-                    .append(valRes.getCode())
-                    .append(";\n")
+                    .append(arrayRes.getCode()).append("[")
+                    .append(idxRes.getCode()).append("].i32 :=.i32 ")
+                    .append(valRes.getCode()).append(";\n")
                     .toString();
         }
 
-        String varName    = leftNode.get("name");
-        var rhsRes        = exprVisitor.visit(valueNode);
-        String suffix     = ollirTypes.toOllirType(types.getExprType(leftNode));
-        String methodName = node.getAncestor(Kind.METHOD_DECL)
-                .map(n -> n.get("name")).orElse("");
-        boolean isLocal   = table.getLocalVariables(methodName)
-                .stream().anyMatch(s -> s.getName().equals(varName));
-        boolean isParam   = table.getParameters(methodName)
-                .stream().anyMatch(s -> s.getName().equals(varName));
-        boolean isField   = table.getFields()
-                .stream().anyMatch(f -> f.getName().equals(varName));
+        // Simple variable assignment
+        if (leftNode.getKind().equals(Kind.VAR_REF_EXPR.getNodeName()) ||
+                leftNode.getKind().equals("Id")) {
+            String varName    = leftNode.get("name");
+            var rhsRes        = exprVisitor.visit(valueNode);
+            String suffix     = ollirTypes.toOllirType(types.getExprType(leftNode));
+            String methodName = node.getAncestor(Kind.METHOD_DECL)
+                    .map(n -> n.get("name")).orElse("");
+            boolean isLocal   = table.getLocalVariables(methodName)
+                    .stream().anyMatch(s -> s.getName().equals(varName));
+            boolean isParam   = table.getParameters(methodName)
+                    .stream().anyMatch(s -> s.getName().equals(varName));
+            boolean isField   = table.getFields()
+                    .stream().anyMatch(f -> f.getName().equals(varName));
 
-        StringBuilder code = new StringBuilder()
-                .append(rhsRes.getComputation());
+            StringBuilder code = new StringBuilder()
+                    .append(rhsRes.getComputation());
 
-        if (isField && !isLocal && !isParam) {
-            code.append("putfield(this, ")
-                    .append(varName).append(suffix)
-                    .append(", ").append(rhsRes.getCode())
-                    .append(").").append(suffix.substring(1))
-                    .append(";\n");
-        } else {
-            code.append(varName).append(suffix)
-                    .append(" :=.").append(suffix.substring(1))
-                    .append(" ").append(rhsRes.getCode())
-                    .append(";\n");
+            if (isField && !isLocal && !isParam) {
+                code.append("putfield(this, ")
+                        .append(varName).append(suffix)
+                        .append(", ").append(rhsRes.getCode())
+                        .append(").").append(suffix.substring(1))
+                        .append(";\n");
+            } else {
+                code.append(varName).append(suffix)
+                        .append(" :=.").append(suffix.substring(1))
+                        .append(" ").append(rhsRes.getCode())
+                        .append(";\n");
+            }
+
+            return code.toString();
         }
 
-        return code.toString();
+        return ""; // fallback
     }
-
 
     private String visitReturn(JmmNode node, Void unused) {
         JmmNode cur = node;
