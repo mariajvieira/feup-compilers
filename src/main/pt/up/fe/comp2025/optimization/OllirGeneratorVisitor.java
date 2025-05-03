@@ -509,11 +509,12 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         String callerName = callerNode.get("name");
         String methodName = node.get("methodName");
 
-        if (callerName.equals("io") && methodName.equals("println")) {
-            code.append("invokestatic(io")
-                    .append(", \"println\"")
-                    .append(args.length() > 0 ? ", " + args : "")
-                    .append(").V;\n");
+        if (table.getImports().contains(callerName)) {
+            code.append("invokestatic(")
+                    .append(callerName)
+                    .append(", \"").append(methodName).append("\"");
+            if (args.length() > 0) code.append(", ").append(args);
+            code.append(").V;\n");
             return code.toString();
         }
 
@@ -521,11 +522,12 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         String typeStr  = ollirTypes.toOllirType(returnType);
         code.append("invokevirtual(")
                 .append(callerRes.getCode())
-                .append(", \"").append(methodName).append("\"")
-                .append(args.length() > 0 ? ", " + args : "")
-                .append(")").append(typeStr).append(";\n");
+                .append(", \"").append(methodName).append("\"");
+        if (args.length() > 0) code.append(", ").append(args);
+        code.append(")").append(typeStr).append(";\n");
         return code.toString();
     }
+
 
     private String visitBlock(JmmNode node, Void unused) {
         StringBuilder code = new StringBuilder();

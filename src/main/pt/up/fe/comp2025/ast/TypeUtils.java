@@ -41,7 +41,6 @@ public class TypeUtils {
         return new Type(name, isArray);
     }
 
-
     /**
      * Gets the {@link Type} of an arbitrary expression.
      *
@@ -81,16 +80,23 @@ public class TypeUtils {
                 if ("true".equals(idName) || "false".equals(idName)) {
                     yield newBooleanType();
                 }
+                if (table.getImports().stream()
+                        .anyMatch(imp -> imp.equals(idName)
+                                || imp.endsWith("." + idName))) {
+                    yield  new Type(idName, false);
+                }
                 String methodSignature = expr.getAncestor(Kind.METHOD_DECL)
                         .map(node -> node.get("name")).orElse(null);
                 Type type = getTypeFromSymbolTable(idName, methodSignature);
                 yield type != null ? type : new Type("unknown", false);
+
             }
             case "Parenthesis" -> getExprType(expr.getChildren().get(0));
             default -> new Type("unknown", false);
         };
         return result;
     }
+
     private Type getTypeFromSymbolTable(String varName, String methodSignature) {
         for (var local : table.getLocalVariables(methodSignature)) {
             if (local.getName().equals(varName)) return local.getType();

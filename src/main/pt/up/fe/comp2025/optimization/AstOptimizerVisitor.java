@@ -12,6 +12,14 @@ import java.util.Map;
 public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
 
     private final Map<String, String> constants = new HashMap<>();
+    private boolean optimized = false;
+
+    public void resetOptimized() {
+        optimized = false;
+    }
+    public boolean hasOptimized() {
+        return optimized;
+    }
 
     public AstOptimizerVisitor() {
         setDefaultValue(null);
@@ -22,9 +30,12 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
     protected void buildVisitor() {
         addVisit("Or",        this::foldBoolBinOp);
         addVisit("Id",        this::propagateId);
-        addVisit(Kind.ASSIGN_STMT.getNodeName(), this::propagateAssign);
+        addVisit("AddSub",    this::foldConstBinOp);
+        addVisit("MulDiv",    this::foldConstBinOp);
+        addVisit("And",       this::foldBoolBinOp);
 
-        // AST‐structure visitors
+        //addVisit("Compare",   this::foldConstCompare);
+        addVisit(Kind.ASSIGN_STMT.getNodeName(), this::propagateAssign);
         addVisit(Kind.PROGRAM.getNodeName(),     this::visitProgram);
         addVisit(Kind.CLASS_DECL.getNodeName(),  this::visitClassDecl);
         addVisit(Kind.METHOD_DECL.getNodeName(), this::visitMethodDecl);
@@ -41,7 +52,50 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
         });
     }
 
+    private Void foldConstBinOp(JmmNode node, Void unused) {
+        // first optimize children
+        node.getChildren().forEach(this::visit);
 
+        var left = node.getChildren().get(0);
+        var right = node.getChildren().get(1);
+        if (left.getKind().equals("Int") && right.getKind().equals("Int")) {
+            int a = Integer.parseInt(left.get("name"));
+            int b = Integer.parseInt(right.get("name"));
+            var op = node.get("op");
+            int res = switch (op) {
+                case "+" -> a + b;
+                case "-" -> a - b;
+                case "*" -> a * b;
+                case "/" -> a / b;
+                default -> throw new RuntimeException("Unknown op: " + op);
+            };
+            replaceWithLiteral(node, "Int", Integer.toString(res));
+        }
+        return null;
+    }
+
+    private Void foldConstCompare(JmmNode node, Void unused) {
+        node.getChildren().forEach(this::visit);
+
+        var left = node.getChildren().get(0);
+        var right = node.getChildren().get(1);
+        if (left.getKind().equals("Int") && right.getKind().equals("Int")) {
+            int a = Integer.parseInt(left.get("name"));
+            int b = Integer.parseInt(right.get("name"));
+            var op = node.get("op");
+            boolean res = switch (op) {
+                case "<"  -> a < b;
+                case ">"  -> a > b;
+                case "<=" -> a <= b;
+                case ">=" -> a >= b;
+                case "==" -> a == b;
+                case "!=" -> a != b;
+                default   -> throw new RuntimeException("Unknown cmp: " + op);
+            };
+            replaceWithLiteral(node, "Boolean", Boolean.toString(res));
+        }
+        return null;
+    }
     private Void visitProgram(JmmNode node, Void unused) {
         node.getChildren().forEach(this::visit);
         return null;
@@ -103,7 +157,6 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
         return null;
     }
 
-
     private Void propagateId(JmmNode node, Void unused) {
         if (node.getParent() != null && node.getParent().getKind().equals(Kind.ASSIGN_STMT.getNodeName())) {
             if (node.equals(node.getParent().getChild(0))) {
@@ -121,18 +174,16 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
     }
 
 
-
     private Void foldBoolBinOp(JmmNode node, Void unused) {
-        var left  = node.getChildren().get(0);
+        node.getChildren().forEach(this::visit);
+
+        var left = node.getChildren().get(0);
         var right = node.getChildren().get(1);
         if (left.getKind().equals("Boolean") && right.getKind().equals("Boolean")) {
             boolean b1 = left.get("name").equals("true");
             boolean b2 = right.get("name").equals("true");
             boolean res = node.getKind().equals("And") ? (b1 && b2) : (b1 || b2);
             replaceWithLiteral(node, "Boolean", Boolean.toString(res));
-        } else {
-            visit(left);
-            visit(right);
         }
         return null;
     }
@@ -141,6 +192,7 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
         var lit = node.copy(Collections.singletonList(newKind));
         lit.put("name", litValue);
         node.replace(lit);
+        optimized=true;
     }
 
 }

@@ -33,11 +33,36 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
         addVisit("ReturnStmt", this::visitReturnStmt);
         addVisit("MethodCall", this::visitMethodCall);
         addVisit("ArrayLiteral", this::visitArrayLiteral);
+        addVisit("Id", this::visitId);
+        addVisit("importDecl", this::visitImportDecl);
+
+    }
+
+
+    private Void visitImportDecl(JmmNode importDecl, SymbolTable table) {
+        var qname = importDecl.getChildren().get(0);
+        // raw is "[io]" or "[java,util]" → strip brackets
+        String raw = qname.get("name");
+        String stripped = raw.replaceAll("\\[|\\]", "");
+        // turn comma list into dot notation
+        String importName = stripped.replace(",", ".");
+        table.getImports().add(importName);
+        return null;
     }
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
         currentMethod = method.get("name");
         typeUtils = new TypeUtils(table);
+        return null;
+    }
+
+    private Void visitId(JmmNode idNode, SymbolTable table) {
+        String name = idNode.get("name");
+        boolean isImport = table.getImports().stream()
+                .anyMatch(imp -> imp.equals(name) || imp.endsWith("." + name));
+        if (isImport) {
+            return null;
+        }
         return null;
     }
 

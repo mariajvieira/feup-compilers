@@ -21,6 +21,16 @@ public class UndeclaredVariable extends AnalysisVisitor {
     public void buildVisitor() {
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
         addVisit(Kind.VAR_REF_EXPR, this::visitVarRefExpr);
+        addVisit("Id",                           this::visitVarRefExpr);
+        addVisit("importDecl",                   (n, t) -> null);
+        addVisit(Kind.VAR_DECL.getNodeName(),    (n, t) -> null);
+        addVisit(Kind.PARAM.getNodeName(),       (n, t) -> null);
+
+        setDefaultVisit((node, table) -> {
+            for (var child : node.getChildren())
+                visit(child, table);
+            return null;
+        });
     }
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
@@ -29,28 +39,38 @@ public class UndeclaredVariable extends AnalysisVisitor {
     }
 
     private Void visitVarRefExpr(JmmNode varRefExpr, SymbolTable table) {
-        SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
+        String name = varRefExpr.get("name");
 
-        var varRefName = varRefExpr.get("name");
-
-        if (table.getParameters(currentMethod).stream()
-                .anyMatch(param -> param.getName().equals(varRefName))) {
+        // Skip literals and 'this'
+        if (name.equals("true") || name.equals("false") || name.equals("this"))
             return null;
-        }
-        if (table.getLocalVariables(currentMethod).stream()
-                .anyMatch(varDecl -> varDecl.getName().equals(varRefName))) {
+
+        // Skip imported types (e.g., io)
+        boolean isImport = table.getImports().stream()
+                .anyMatch(imp -> imp.equals(name) || imp.endsWith("." + name));
+        if (isImport)
             return null;
+
+        // Skip fields
+        if (table.getFields().stream().anyMatch(f -> f.getName().equals(name)))
+            return null;
+
+        // Skip parameters or locals in current method
+        if (currentMethod != null) {
+            boolean isParam = table.getParameters(currentMethod)
+                    .stream().anyMatch(p -> p.getName().equals(name));
+            boolean isLocal = table.getLocalVariables(currentMethod)
+                    .stream().anyMatch(v -> v.getName().equals(name));
+            if (isParam || isLocal)
+                return null;
         }
 
-        var message = String.format("Variable '%s' does not exist.", varRefName);
         addReport(Report.newError(
                 Stage.SEMANTIC,
-                varRefExpr.getLine(),
-                varRefExpr.getColumn(),
-                message,
-                null)
-        );
-
+                varRefExpr.getLine(),  varRefExpr.getColumn(),
+                "Variable " + name + " not declared",
+                null
+        ));
         return null;
     }
 
