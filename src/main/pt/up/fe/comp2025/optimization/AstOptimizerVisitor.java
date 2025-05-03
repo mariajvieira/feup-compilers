@@ -20,10 +20,6 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
 
     @Override
     protected void buildVisitor() {
-        //addVisit("AddSub",    this::foldIntBinOp);
-        //addVisit("MulDiv",    this::foldIntBinOp);
-        //addVisit("Compare",   this::foldIntCompare);
-        //addVisit("And",       this::foldBoolBinOp);
         addVisit("Or",        this::foldBoolBinOp);
         addVisit("Id",        this::propagateId);
         addVisit(Kind.ASSIGN_STMT.getNodeName(), this::propagateAssign);
@@ -89,9 +85,7 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
         var target = node.getChildren().get(0);
         var value  = node.getChildren().get(1);
 
-        // only propagate simple identifiers, skip array accesses, field stores, etc.
         if (!target.getKind().equals("Id")) {
-            // still recurse into the value subtree
             visit(value);
             return null;
         }
@@ -126,51 +120,7 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
         return null;
     }
 
-    private Void foldIntBinOp(JmmNode node, Void unused) {
-        var left  = node.getChildren().get(0);
-        var right = node.getChildren().get(1);
-        if (left.getKind().equals("Int") && right.getKind().equals("Int")) {
-            int v1 = Integer.parseInt(left.get("name"));
-            int v2 = Integer.parseInt(right.get("name"));
-            String op = node.get("op");
-            int res = switch (op) {
-                case "+" -> v1 + v2;
-                case "-" -> v1 - v2;
-                case "*" -> v1 * v2;
-                case "/" -> v1 / v2;
-                default  -> v1;
-            };
-            replaceWithLiteral(node, "Int", Integer.toString(res));
-        } else {
-            visit(left);
-            visit(right);
-        }
-        return null;
-    }
 
-    private Void foldIntCompare(JmmNode node, Void unused) {
-        var left  = node.getChildren().get(0);
-        var right = node.getChildren().get(1);
-        if (left.getKind().equals("Int") && right.getKind().equals("Int")) {
-            int v1 = Integer.parseInt(left.get("name"));
-            int v2 = Integer.parseInt(right.get("name"));
-            String op = node.get("op");
-            boolean r = switch (op) {
-                case "<"  -> v1 < v2;
-                case ">"  -> v1 > v2;
-                case "==" -> v1 == v2;
-                case "!=" -> v1 != v2;
-                case "<=" -> v1 <= v2;
-                case ">=" -> v1 >= v2;
-                default   -> false;
-            };
-            replaceWithLiteral(node, "Boolean", Boolean.toString(r));
-        } else {
-            visit(left);
-            visit(right);
-        }
-        return null;
-    }
 
     private Void foldBoolBinOp(JmmNode node, Void unused) {
         var left  = node.getChildren().get(0);

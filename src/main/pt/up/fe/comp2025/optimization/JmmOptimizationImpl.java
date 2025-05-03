@@ -3,6 +3,7 @@ package pt.up.fe.comp2025.optimization;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
 import pt.up.fe.comp.jmm.ollir.JmmOptimization;
 import pt.up.fe.comp.jmm.ollir.OllirResult;
+import pt.up.fe.comp2025.CompilerConfig;
 
 import java.util.Collections;
 
@@ -26,9 +27,12 @@ public class JmmOptimizationImpl implements JmmOptimization {
 
     @Override
     public JmmSemanticsResult optimize(JmmSemanticsResult semanticsResult) {
-        var optimizer = new AstOptimizerVisitor();
-        optimizer.visit(semanticsResult.getRootNode());
-        System.out.println("optimized ast:\n" + semanticsResult.getRootNode().toTree());
+
+        if (CompilerConfig.getOptimize(semanticsResult.getConfig())) {
+            var optimizer = new AstOptimizerVisitor();
+            optimizer.visit(semanticsResult.getRootNode());
+            System.out.println("optimized ast:\n" + semanticsResult.getRootNode().toTree());
+        }
         return semanticsResult;
     }
 
