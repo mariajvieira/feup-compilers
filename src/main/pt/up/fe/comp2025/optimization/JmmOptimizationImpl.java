@@ -15,15 +15,14 @@ public class JmmOptimizationImpl implements JmmOptimization {
     public OllirResult toOllir(JmmSemanticsResult semanticsResult) {
         System.out.println(semanticsResult.getRootNode().toTree());
 
-        // Create visitor that will generate the OLLIR code
         var visitor = new OllirGeneratorVisitor(semanticsResult.getSymbolTable());
-
-        // Visit the AST and obtain OLLIR code
         var ollirCode = visitor.visit(semanticsResult.getRootNode());
+        var result    = new OllirResult(semanticsResult, ollirCode, Collections.emptyList());
 
         System.out.println("\nOLLIR:\n\n" + ollirCode);
+        result = optimize(result);
 
-        return new OllirResult(semanticsResult, ollirCode, Collections.emptyList());
+        return result;
     }
 
     @Override
@@ -46,11 +45,13 @@ public class JmmOptimizationImpl implements JmmOptimization {
 
     @Override
     public OllirResult optimize(OllirResult ollirResult) {
+        // Only perform register allocation if the "-r" flag appears
+        var config = ollirResult.getConfig();
+        if (!config.containsKey(ConfigOptions.getRegister())) {
+            return ollirResult;
+        }
 
-        int maxRegs = ollirResult.getConfig().containsKey(ConfigOptions.getRegister())
-                ? Integer.parseInt(ollirResult.getConfig().get(ConfigOptions.getRegister()))
-                : -1;
-
+        int maxRegs = Integer.parseInt(config.get(ConfigOptions.getRegister()));
         for (Method method : ollirResult.getOllirClass().getMethods()) {
             var allocation = RegisterAllocator.allocate(method, maxRegs);
             allocation.forEach((varName, reg) -> {

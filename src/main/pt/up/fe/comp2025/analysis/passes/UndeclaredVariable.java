@@ -21,8 +21,8 @@ public class UndeclaredVariable extends AnalysisVisitor {
     public void buildVisitor() {
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
         addVisit(Kind.VAR_REF_EXPR, this::visitVarRefExpr);
-        addVisit("Id",                           this::visitVarRefExpr);
-        addVisit("importDecl",                   (n, t) -> null);
+        addVisit("Id", this::visitVarRefExpr);
+        addVisit("importDecl", (n, t) -> null);
         addVisit(Kind.VAR_DECL.getNodeName(),    (n, t) -> null);
         addVisit(Kind.PARAM.getNodeName(),       (n, t) -> null);
 

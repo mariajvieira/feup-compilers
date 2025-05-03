@@ -3,7 +3,6 @@ package pt.up.fe.comp2025.optimization;
 import org.specs.comp.ollir.Element;
 import org.specs.comp.ollir.Method;
 import org.specs.comp.ollir.Operand;
-import org.specs.comp.ollir.Operation;
 import org.specs.comp.ollir.inst.*;
 
 import java.util.*;
@@ -11,25 +10,38 @@ import java.util.*;
 public class RegisterAllocator {
 
     public static Map<String, Integer> allocate(Method method, int r) {
-        Map<String, Interval> intervals = computeIntervals(method);
-        Map<String, Set<String>> graph = buildInterferenceGraph(intervals);
+        var intervals = computeIntervals(method);
+        var graph     = buildInterferenceGraph(intervals);
+        int numVars   = intervals.size();
+        Map<String,Integer> coloring;
 
-        int k = (r <= 0) ? intervals.size() : r;
-        Map<String, Integer> coloring = colorGraph(graph, k);
-        if (coloring == null && r > 0) {
-            throw new RuntimeException(
-                    "Not enough registers: need at least " + graph.size());
+        if (r > 0) {
+            coloring = colorGraph(graph, r);
+            if (coloring == null) {
+                coloring = colorGraph(graph, numVars);
+                int used = Collections.max(coloring.values()) + 1;
+                System.out.println("Method " + method.getMethodName()
+                        + ": minimized to " + used + " JVM local(s)");
+            } else {
+                System.out.println("Method " + method.getMethodName()
+                        + ": using at most " + r + " JVM local(s)");
+            }
         }
-        if (r == 0) {
+        else if (r == 0) {
+            coloring = colorGraph(graph, numVars);
             int used = Collections.max(coloring.values()) + 1;
-            k = used;
+            System.out.println("Method " + method.getMethodName()
+                    + ": minimized to " + used + " JVM local(s)");
+        }
+        else {
+            coloring = colorGraph(graph, numVars);
+            System.out.println("Method " + method.getMethodName()
+                    + ": using original " + numVars + " JVM local(s)");
         }
 
         int base = (method.isStaticMethod() ? 0 : 1) + method.getParams().size();
-        Map<String, Integer> result = new LinkedHashMap<>();
-        for (var entry : coloring.entrySet()) {
-            result.put(entry.getKey(), base + entry.getValue());
-        }
+        var result = new LinkedHashMap<String,Integer>();
+        coloring.forEach((var, col) -> result.put(var, base + col));
         return result;
     }
 
@@ -68,7 +80,7 @@ public class RegisterAllocator {
             }
             int c = 0;
             while (forbidden.contains(c)) c++;
-            if (c >= k) return null; // spill needed
+            if (c >= k) return null;
             color.put(n, c);
         }
 
@@ -96,14 +108,12 @@ public class RegisterAllocator {
             Instruction ins = code.get(i);
             final int idx = i;
 
-            // def
             getDest(ins).ifPresent(dest -> {
                 String var = getOperandName(dest);
                 intervals.computeIfAbsent(var, v -> new Interval(idx, idx))
                         .start = idx;
             });
 
-            // uses
             for (Operand use : getUses(ins)) {
                 String var = getOperandName(use);
                 intervals.computeIfAbsent(var, v -> new Interval(idx, idx))
@@ -146,7 +156,6 @@ public class RegisterAllocator {
                     if (e instanceof Operand) uses.add((Operand) e);
                 }
             }
-            // else: no further uses in simple copy
         }
         else if (ins instanceof BinaryOpInstruction bi) {
             Element l = bi.getLeftOperand(), r = bi.getRightOperand();
