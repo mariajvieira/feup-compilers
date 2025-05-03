@@ -22,7 +22,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
         addVisit(Kind.VAR_REF_EXPR, this::visitVarRefExpr);
         addVisit("Id", this::visitVarRefExpr);
-        addVisit("importDecl", (n, t) -> null);
+        addVisit("importDecl", this::visitImportDecl);
         addVisit(Kind.VAR_DECL.getNodeName(),    (n, t) -> null);
         addVisit(Kind.PARAM.getNodeName(),       (n, t) -> null);
 
@@ -32,6 +32,16 @@ public class UndeclaredVariable extends AnalysisVisitor {
             return null;
         });
     }
+
+    private Void visitImportDecl(JmmNode importDecl, SymbolTable table) {
+        var qname      = importDecl.getChildren().get(0);
+        var raw        = qname.get("name");
+        var stripped   = raw.replaceAll("\\[|\\]", "");
+        var importName = stripped.replace(",", ".");
+        table.getImports().add(importName);
+        return null;
+    }
+
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
         currentMethod = method.get("name");

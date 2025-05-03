@@ -68,7 +68,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit(ARRAY_ACCESS, this::visitArrayAccess);
         addVisit(ASSIGN_ARRAY_STMT, this::visitArrayAssign);
 
-        addVisit("ImportDecl", this::visitImportDecl);
+        addVisit("importDecl", this::visitImportDecl);
 
         setDefaultVisit(this::defaultVisit);
     }
