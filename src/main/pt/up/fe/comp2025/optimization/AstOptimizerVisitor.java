@@ -20,10 +20,10 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
 
     @Override
     protected void buildVisitor() {
-        addVisit("AddSub",    this::foldIntBinOp);
-        addVisit("MulDiv",    this::foldIntBinOp);
+        //addVisit("AddSub",    this::foldIntBinOp);
+        //addVisit("MulDiv",    this::foldIntBinOp);
         //addVisit("Compare",   this::foldIntCompare);
-        addVisit("And",       this::foldBoolBinOp);
+        //addVisit("And",       this::foldBoolBinOp);
         addVisit("Or",        this::foldBoolBinOp);
         addVisit("Id",        this::propagateId);
         addVisit(Kind.ASSIGN_STMT.getNodeName(), this::propagateAssign);
