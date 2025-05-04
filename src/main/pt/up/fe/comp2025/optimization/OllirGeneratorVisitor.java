@@ -107,20 +107,16 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
     }
 
 
-    // File: src/main/pt/up/fe/comp2025/optimization/OllirGeneratorVisitor.java
     private String visitAssignStmt(JmmNode node, Void unused) {
         var leftNode  = node.getChild(0);
         var valueNode = node.getChild(1);
 
-        // Array store
         if (leftNode.getKind().equals(Kind.ARRAY_ACCESS.getNodeName())) {
             // first compute array reference and index
             var arrayRes = exprVisitor.visit(leftNode.getChild(0));
             var idxRes   = exprVisitor.visit(leftNode.getChild(1));
-            // then compute value
             var valRes   = exprVisitor.visit(valueNode);
 
-            // build OLLIR store instruction
             return new StringBuilder()
                     .append(arrayRes.getComputation())
                     .append(idxRes.getComputation())
@@ -131,7 +127,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
                     .toString();
         }
 
-        // Simple variable assignment
         if (leftNode.getKind().equals(Kind.VAR_REF_EXPR.getNodeName()) ||
                 leftNode.getKind().equals("Id")) {
             String varName    = leftNode.get("name");

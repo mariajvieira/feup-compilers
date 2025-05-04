@@ -51,21 +51,17 @@ public class UndeclaredVariable extends AnalysisVisitor {
     private Void visitVarRefExpr(JmmNode varRefExpr, SymbolTable table) {
         String name = varRefExpr.get("name");
 
-        // Skip literals and 'this'
         if (name.equals("true") || name.equals("false") || name.equals("this"))
             return null;
 
-        // Skip imported types (e.g., io)
         boolean isImport = table.getImports().stream()
                 .anyMatch(imp -> imp.equals(name) || imp.endsWith("." + name));
         if (isImport)
             return null;
 
-        // Skip fields
         if (table.getFields().stream().anyMatch(f -> f.getName().equals(name)))
             return null;
 
-        // Skip parameters or locals in current method
         if (currentMethod != null) {
             boolean isParam = table.getParameters(currentMethod)
                     .stream().anyMatch(p -> p.getName().equals(name));

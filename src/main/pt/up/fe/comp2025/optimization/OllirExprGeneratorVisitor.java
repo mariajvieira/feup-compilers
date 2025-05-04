@@ -33,10 +33,8 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
 
     @Override
     protected void buildVisitor() {
-        // Integer literal
         addVisit("Int", this::visitInteger);
 
-        // Variable references
         addVisit("Id", this::visitVarRef);
 
         // Binary operators

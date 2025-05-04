@@ -45,7 +45,6 @@ public class JmmOptimizationImpl implements JmmOptimization {
 
     @Override
     public OllirResult optimize(OllirResult ollirResult) {
-        // Only perform register allocation if the "-r" flag appears
         var config = ollirResult.getConfig();
         if (!config.containsKey(ConfigOptions.getRegister())) {
             return ollirResult;

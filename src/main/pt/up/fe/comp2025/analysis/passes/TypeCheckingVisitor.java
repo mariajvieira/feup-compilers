@@ -41,10 +41,8 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
 
     private Void visitImportDecl(JmmNode importDecl, SymbolTable table) {
         var qname = importDecl.getChildren().get(0);
-        // raw is "[io]" or "[java,util]" → strip brackets
         String raw = qname.get("name");
         String stripped = raw.replaceAll("\\[|\\]", "");
-        // turn comma list into dot notation
         String importName = stripped.replace(",", ".");
         table.getImports().add(importName);
         return null;

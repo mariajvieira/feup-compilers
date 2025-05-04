@@ -53,7 +53,6 @@ public class AstOptimizerVisitor extends PreorderJmmVisitor<Void, Void> {
     }
 
     private Void foldConstBinOp(JmmNode node, Void unused) {
-        // first optimize children
         node.getChildren().forEach(this::visit);
 
         var left = node.getChildren().get(0);
