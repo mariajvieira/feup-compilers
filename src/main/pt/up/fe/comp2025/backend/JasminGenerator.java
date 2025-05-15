@@ -101,6 +101,7 @@ public class JasminGenerator {
 
         code.append(".super ").append(fullSuperClass).append(NL);
 
+
         // generate a single constructor method
         var defaultConstructor = """
                 ;default constructor
@@ -150,6 +151,7 @@ public class JasminGenerator {
                 .append("(" + params + ")" + returnType).append(NL);
 
         // Add limits
+        // FAZER: ir incrementando limite da stack a medida que adiiciona mais variaveis
         code.append(TAB).append(".limit stack 99").append(NL);
         code.append(TAB).append(".limit locals 99").append(NL);
 
@@ -158,6 +160,20 @@ public class JasminGenerator {
                     .collect(Collectors.joining(NL + TAB, TAB, NL));
 
             code.append(instCode);
+        }
+
+        for (var instruction : method.getInstructions()) {
+            if (instruction instanceof AssignInstruction assign) {
+                code.append(TAB).append(generateAssign(assign));
+            } else if (instruction instanceof BinaryOpInstruction binaryOp) {
+                code.append(TAB).append(generateBinaryOp(binaryOp));
+            } else if (instruction instanceof ReturnInstruction returnInst) {
+                code.append(TAB).append(generateReturn(returnInst));
+            } else if (instruction instanceof SingleOpInstruction singleOp) {
+                code.append(TAB).append(generateSingleOp(singleOp));
+            } else {
+                code.append(TAB).append("; unhandled instruction").append(NL);
+            }
         }
 
         code.append(".end method\n");

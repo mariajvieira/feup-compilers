@@ -18,7 +18,7 @@ NEW : 'new' ;
 TRUE : 'true' ;
 FALSE : 'false' ;
 THIS : 'this' ;
-STRING : 'String' ;
+
 
 // Tokens
 INTEGER : [0-9]+ ;
@@ -109,7 +109,7 @@ expr
     | NEW name=ID '(' ')'                     # NewObject
     | '(' expr ')'                            # Parenthesis
     | expr '.' methodName=ID '(' (expr (',' expr)*)? ')'  # MethodCall
-    | expr '.' 'length'                       # Length
+    | expr '.' field=ID                             # Length
     | expr '[' expr ']'                       # ArrayAccess
     | '!' expr                                # Not
     | expr op=('*'|'/') expr                  # MulDiv

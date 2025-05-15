@@ -10,12 +10,15 @@ import pt.up.fe.comp2025.analysis.AnalysisVisitor;
 import pt.up.fe.comp2025.ast.Kind;
 import pt.up.fe.comp2025.ast.TypeUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class TypeCheckingVisitor extends AnalysisVisitor {
 
     private String currentMethod;
     private TypeUtils typeUtils;
+    private final List<Report> reports = new ArrayList<>();
+
 
     @Override
     public void buildVisitor() {
@@ -35,7 +38,37 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
         addVisit("ArrayLiteral", this::visitArrayLiteral);
         addVisit("Id", this::visitId);
         addVisit("importDecl", this::visitImportDecl);
+        addVisit("Length", this::visitLength);
+        addVisit("This", this::visitThis);
 
+
+    }
+
+    private Void visitThis(JmmNode node, SymbolTable table) {
+        var methodNode = node.getAncestor(Kind.METHOD_DECL);
+        if (methodNode.isPresent() && methodNode.get().getBoolean("isStatic", false)) {
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    node.getLine(), node.getColumn(),
+                    "Cannot use 'this' in static context",
+                    null
+            ));
+        }
+        node.put("type", table.getClassName());
+        return null;
+    }
+
+    private Void visitLength(JmmNode node, SymbolTable table) {
+        visit(node.getChildren().get(0), table);
+        String field = node.get("field");
+        if (!field.equals("length")) {
+            reports.add(Report.newError(Stage.SEMANTIC,
+                    node.getLine(), node.getColumn(),
+                    "Expected '.length' but found '." + field + "'", null));
+        }
+
+        node.put("type", TypeUtils.newIntType().getName());
+        return null;
     }
 
 
