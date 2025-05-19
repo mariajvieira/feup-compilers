@@ -54,7 +54,6 @@ varDecl
 type locals[boolean isArray=false]
     : name=INT ('[' ']' {$isArray=true;})?       // int, int[]
     | name=BOOLEAN ('[' ']' {$isArray=true;})?   // boolean, boolean[]
-    | name=STRING ('[' ']' {$isArray=true;})?    // String, String[]
     | name=ID ('[' ']' {$isArray=true;})?        // class name or array
     | name=VOID                                  // void (for methods)
     | name=INT '...' {$isArray=true;}            // int varargs
@@ -68,9 +67,9 @@ methodDecl locals[boolean isPublic=false, boolean isStatic=false]
       (STATIC {$isStatic=true;})?
       type name=ID
       '(' paramList? ')'
-      '{' 
-        (varDecl)* 
-        (stmt)* 
+      '{'
+        (varDecl)*
+        (stmt)*
         (RETURN expr? ';')?
       '}'
     ;

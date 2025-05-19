@@ -59,12 +59,41 @@ public class TypeCheckingVisitor extends AnalysisVisitor {
     }
 
     private Void visitLength(JmmNode node, SymbolTable table) {
-        visit(node.getChildren().get(0), table);
+        var exprNode = node.getChildren().get(0);
+        visit(exprNode, table);
+
+        Type exprType = typeUtils.getExprType(exprNode);
+
+        if (exprNode.getKind().equals("This")) {
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    node.getLine(), node.getColumn(),
+                    "Cannot use '.length' on 'this' of type '" + exprType.getName() + "'",
+                    null
+            ));
+            node.put("type", TypeUtils.newIntType().getName());
+            return null;
+        }
+
+        if (!exprType.isArray()) {
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    node.getLine(), node.getColumn(),
+                    "Cannot use '.length' on non-array type '" + exprType.getName() + "'",
+                    null
+            ));
+            node.put("type", TypeUtils.newIntType().getName());
+            return null;
+        }
+
         String field = node.get("field");
         if (!field.equals("length")) {
-            reports.add(Report.newError(Stage.SEMANTIC,
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
                     node.getLine(), node.getColumn(),
-                    "Expected '.length' but found '." + field + "'", null));
+                    "Expected '.length' but found '." + field + "'",
+                    null
+            ));
         }
 
         node.put("type", TypeUtils.newIntType().getName());
