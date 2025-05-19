@@ -58,7 +58,6 @@ type locals[boolean isArray=false]
     | name=VOID                                  // void (for methods)
     | name=INT '...' {$isArray=true;}            // int varargs
     | name=BOOLEAN '...' {$isArray=true;}        // boolean varargs
-    | name=STRING '...' {$isArray=true;}         // String varargs
     | name=ID '...' {$isArray=true;}             // class varargs
     ;
 

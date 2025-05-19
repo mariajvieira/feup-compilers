@@ -14,6 +14,13 @@ import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.specs.util.classmap.FunctionClassMap;
 import pt.up.fe.specs.util.exceptions.NotImplementedException;
 import pt.up.fe.specs.util.utilities.StringLines;
+import org.specs.comp.ollir.inst.PutFieldInstruction;
+import org.specs.comp.ollir.inst.GetFieldInstruction;
+import org.specs.comp.ollir.type.Type;
+import org.specs.comp.ollir.inst.NewInstruction;
+import org.specs.comp.ollir.inst.InvokeSpecialInstruction;
+
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +66,10 @@ public class JasminGenerator {
         generators.put(Operand.class, this::generateOperand);
         generators.put(BinaryOpInstruction.class, this::generateBinaryOp);
         generators.put(ReturnInstruction.class, this::generateReturn);
+        generators.put(PutFieldInstruction.class, this::generatePutField);
+        generators.put(GetFieldInstruction.class, this::generateGetField);
+        generators.put(NewInstruction.class,  this::generateNewInstruction);
+        generators.put(InvokeSpecialInstruction.class, this::generateInvokeSpecial);
     }
 
     private String apply(TreeNode node) {
@@ -186,26 +197,30 @@ public class JasminGenerator {
 
     private String generateAssign(AssignInstruction assign) {
         var code = new StringBuilder();
-
-        // generate code for loading what's on the right
         code.append(apply(assign.getRhs()));
-
-        // store value in the stack in destination
-        var lhs = assign.getDest();
-
-        if (!(lhs instanceof Operand)) {
-            throw new NotImplementedException(lhs.getClass());
+        var op    = (Operand) assign.getDest();
+        var desc  = currentMethod.getVarTable().get(op.getName());
+        int reg   = desc.getVirtualReg();
+        boolean isInt = op.getType().toString().equals("INT32");
+        String instr;
+        if (isInt) {
+            switch (reg) {
+                case 0: instr = "istore_0"; break;
+                case 1: instr = "istore_1"; break;
+                case 2: instr = "istore_2"; break;
+                case 3: instr = "istore_3"; break;
+                default: instr = "istore " + reg; break;
+            }
+        } else {
+            switch (reg) {
+                case 0: instr = "astore_0"; break;
+                case 1: instr = "astore_1"; break;
+                case 2: instr = "astore_2"; break;
+                case 3: instr = "astore_3"; break;
+                default: instr = "astore " + reg; break;
+            }
         }
-
-        var operand = (Operand) lhs;
-
-        // get register
-        var reg = currentMethod.getVarTable().get(operand.getName());
-
-
-        // TODO: Hardcoded for int type, needs to be expanded
-        code.append("istore ").append(reg.getVirtualReg()).append(NL);
-
+        code.append(instr).append(NL);
         return code.toString();
     }
 
@@ -214,15 +229,46 @@ public class JasminGenerator {
     }
 
     private String generateLiteral(LiteralElement literal) {
-        return "ldc " + literal.getLiteral() + NL;
+        String lit = literal.getLiteral();
+        try {
+            int val = Integer.parseInt(lit);
+            if (val >= -1 && val <= 5) {
+                String code = (val == -1) ? "iconst_m1" : "iconst_" + val;
+                return code + NL;
+            }
+            if (val >= -128 && val <= 127) {
+                return "bipush " + val + NL;
+            }
+            if (val >= -32768 && val <= 32767) {
+                return "sipush " + val + NL;
+            }
+        } catch (NumberFormatException e) {
+            // non-integer literal
+        }
+        return "ldc " + lit + NL;
     }
 
     private String generateOperand(Operand operand) {
-        // get register
-        var reg = currentMethod.getVarTable().get(operand.getName());
-
-        // TODO: Hardcoded for int type, needs to be expanded
-        return "iload " + reg.getVirtualReg() + NL;
+        var desc = currentMethod.getVarTable().get(operand.getName());
+        int reg = desc.getVirtualReg();
+        boolean isInt = operand.getType().toString().equals("INT32");
+        if (isInt) {
+            switch (reg) {
+                case 0: return "iload_0" + NL;
+                case 1: return "iload_1" + NL;
+                case 2: return "iload_2" + NL;
+                case 3: return "iload_3" + NL;
+                default: return "iload " + reg + NL;
+            }
+        } else {
+            switch (reg) {
+                case 0: return "aload_0" + NL;
+                case 1: return "aload_1" + NL;
+                case 2: return "aload_2" + NL;
+                case 3: return "aload_3" + NL;
+                default: return "aload " + reg + NL;
+            }
+        }
     }
 
     private String generateBinaryOp(BinaryOpInstruction binaryOp) {
@@ -255,4 +301,69 @@ public class JasminGenerator {
 
         return code.toString();
     }
+
+    private String toDescriptor(Type type) {
+        switch (type.toString()) {
+            case "INT32":   return "I";
+            case "BOOLEAN": return "Z";
+            case "VOID":    return "V";
+            default:      throw new NotImplementedException("Descriptor for " + type);
+        }
+    }
+
+    private String generatePutField(PutFieldInstruction inst) {
+        var code = new StringBuilder();
+        code.append(apply(inst.getObject()));
+        code.append(apply(inst.getValue()));
+        String owner      = ollirResult.getOllirClass().getClassName();
+        String name       = inst.getField().getName();
+        String descriptor = toDescriptor(inst.getFieldType());
+        code.append("putfield ")
+                .append(owner).append("/").append(name)
+                .append(" ").append(descriptor)
+                .append(NL);
+        return code.toString();
+    }
+
+    private String generateGetField(GetFieldInstruction inst) {
+        var code = new StringBuilder();
+        code.append(apply(inst.getObject()));
+        String owner      = ollirResult.getOllirClass().getClassName();
+        String name       = inst.getField().getName();
+        String descriptor = toDescriptor(inst.getFieldType());
+        code.append("getfield ")
+                .append(owner).append("/").append(name)
+                .append(" ").append(descriptor)
+                .append(NL);
+        return code.toString();
+    }
+
+    private String generateNewInstruction(NewInstruction inst) {
+        var code = new StringBuilder();
+        String cls = inst.getReturnType().toString();
+        code.append("new ").append(cls).append(NL);
+        code.append("dup").append(NL);
+        code.append("invokespecial ")
+                .append(cls).append("/<init>()V")
+                .append(NL);
+        return code.toString();
+    }
+
+    private String generateInvokeSpecial(InvokeSpecialInstruction inst) {
+        var code = new StringBuilder();
+        for (var op : inst.getOperands()) {
+            code.append(apply((TreeNode) op));
+        }
+        String owner = ollirResult.getOllirClass().getClassName();
+        String method = inst.getMethodName();
+        String paramsDesc = inst.getArguments().stream()
+                .map(arg -> toDescriptor(arg.getType()))
+                .collect(Collectors.joining());
+        String desc = "(" + paramsDesc + ")" + toDescriptor(inst.getReturnType());
+        code.append("invokespecial ")
+                .append(owner).append("/").append(method)
+                .append(desc).append(NL);
+        return code.toString();
+    }
+
 }
