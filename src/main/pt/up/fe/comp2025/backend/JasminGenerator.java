@@ -398,12 +398,28 @@ public class JasminGenerator {
     private String generateReturn(ReturnInstruction returnInst) {
         var code = new StringBuilder();
 
-        // TODO: Hardcoded for int type, needs to be expanded
-        code.append("ireturn").append(NL);
+        var operandOpt = returnInst.getOperand();
+        if (operandOpt.isEmpty()) {
+            code.append("return").append(NL);
+            return code.toString();
+        }
+
+        Element operand = operandOpt.get();
+        if (operand instanceof Operand) {
+            var desc = currentMethod.getVarTable().get(((Operand) operand).getName());
+            int reg = desc.getVirtualReg();
+            code.append("iload").append(reg == 1 ? "_1" : " " + reg).append(NL);
+        }
+
+        Type type = operand.getType();
+        if (type.toString().equals("INT32") || type.toString().equals("BOOLEAN")) {
+            code.append("ireturn").append(NL);
+        } else {
+            code.append("areturn").append(NL);
+        }
 
         return code.toString();
     }
-
 
     private String toDescriptor(Type type) {
         if (type instanceof ArrayType) {
