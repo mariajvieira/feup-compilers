@@ -232,63 +232,6 @@ public class JasminGenerator {
         return code.toString();
     }
 
-
-
-//
-//    private String generateMethod(Method method) {
-//        //System.out.println("STARTING METHOD " + method.getMethodName());
-//        // set method
-//        currentMethod = method;
-//
-//        var code = new StringBuilder();
-//
-//        // calculate modifier
-//        var modifier = types.getModifier(method.getMethodAccessModifier());
-//
-//        var methodName = method.getMethodName();
-//
-//        // TODO: Hardcoded param types and return type, needs to be expanded
-//        var params = "I";
-//        var returnType = "I";
-//
-//        code.append("\n.method ").append(modifier)
-//                .append(methodName)
-//                .append("(" + params + ")" + returnType).append(NL);
-//
-//        // Add limits
-//        // FAZER: ir incrementando limite da stack a medida que adiiciona mais variaveis
-//        code.append(TAB).append(".limit stack 99").append(NL);
-//        code.append(TAB).append(".limit locals 99").append(NL);
-//
-//        for (var inst : method.getInstructions()) {
-//            var instCode = StringLines.getLines(apply(inst)).stream()
-//                    .collect(Collectors.joining(NL + TAB, TAB, NL));
-//
-//            code.append(instCode);
-//        }
-//
-//        for (var instruction : method.getInstructions()) {
-//            if (instruction instanceof AssignInstruction assign) {
-//                code.append(TAB).append(generateAssign(assign));
-//            } else if (instruction instanceof BinaryOpInstruction binaryOp) {
-//                code.append(TAB).append(generateBinaryOp(binaryOp));
-//            } else if (instruction instanceof ReturnInstruction returnInst) {
-//                code.append(TAB).append(generateReturn(returnInst));
-//            } else if (instruction instanceof SingleOpInstruction singleOp) {
-//                code.append(TAB).append(generateSingleOp(singleOp));
-//            } else {
-//                code.append(TAB).append("; unhandled instruction").append(NL);
-//            }
-//        }
-//
-//        code.append(".end method\n");
-//
-//        // unset method
-//        currentMethod = null;
-//        //System.out.println("ENDING METHOD " + method.getMethodName());
-//        return code.toString();
-//    }
-
     private String generateAssign(AssignInstruction assign) {
         var code = new StringBuilder();
         code.append(apply(assign.getRhs()));
