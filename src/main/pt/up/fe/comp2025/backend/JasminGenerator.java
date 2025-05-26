@@ -74,6 +74,8 @@ public class JasminGenerator {
         generators.put(GotoInstruction.class, this::generateGoto);
         generators.put(InvokeStaticInstruction.class, this::generateInvokeStatic);
         generators.put(Operand.class, this::generateOperand);
+        generators.put(UnaryOpInstruction.class, this::generateUnaryOp);
+        generators.put(InvokeVirtualInstruction.class, this::generateInvokeVirtual);
 
     }
 
@@ -124,7 +126,7 @@ public class JasminGenerator {
 
         for (Method method : classUnit.getMethods()) {
             if (method.isConstructMethod()) {
-                continue; // Already handled default constructor, or handle custom constructors
+                continue;
             }
             jasminCode.append(generateMethod(method));
         }
@@ -143,7 +145,6 @@ public class JasminGenerator {
 
         var code = new StringBuilder();
 
-        // generate class name
         var className = ollirResult.getOllirClass().getClassName();
         code.append(".class ").append(className).append(NL).append(NL);
 
@@ -186,11 +187,10 @@ public class JasminGenerator {
 
         var modifier   = types.getModifier(method.getMethodAccessModifier());
         var methodName = method.getMethodName();
-        // derive parameters from OLLIR Method.params
         var params = method.getParams().stream()
                 .map(p -> toDescriptor(p.getType()))
                 .collect(Collectors.joining());
-        // derive return type descriptor
+
         var returnType = toDescriptor(method.getReturnType());
 
         code.append("\n.method ").append(modifier)
@@ -200,22 +200,18 @@ public class JasminGenerator {
         code.append(TAB).append(".limit stack 99").append(NL);
         code.append(TAB).append(".limit locals 99").append(NL);
 
-        // 1st pass...
         for (var inst : method.getInstructions()) {
-            // unchanged
             var instCode = StringLines.getLines(apply(inst))
                     .stream()
                     .collect(Collectors.joining(NL + TAB, TAB, NL));
             code.append(instCode);
             if (inst instanceof ReturnInstruction) break;
         }
-        // 2nd pass...
         for (var inst : method.getInstructions()) {
             if (inst instanceof ReturnInstruction returnInst) {
                 code.append(TAB).append(generateReturn(returnInst));
                 break;
             }
-            // unchanged
             if (inst instanceof AssignInstruction assign) {
                 code.append(TAB).append(generateAssign(assign));
             } else if (inst instanceof BinaryOpInstruction binOp) {
@@ -270,22 +266,20 @@ public class JasminGenerator {
         try {
             int val = Integer.parseInt(lit);
             if (val >= -1 && val <= 5) {
-                String code = (val == -1) ? "iconst_m1" : "iconst_" + val;
-                return code + NL;
+                return (val == -1 ? "iconst_m1" : "iconst_" + val) + "\n";
             }
             if (val >= -128 && val <= 127) {
-                return "bipush " + val + NL;
+                return "bipush " + val + "\n";
             }
             if (val >= -32768 && val <= 32767) {
-                return "sipush " + val + NL;
+                return "sipush " + val + "\n";
             }
         } catch (NumberFormatException e) {
-            // Non-numeric literal, add quotes if necessary
             if (!(lit.startsWith("\"") && lit.endsWith("\""))) {
                 lit = "\"" + lit + "\"";
             }
         }
-        return "ldc " + lit + NL;
+        return "ldc " + lit + "\n";
     }
 
     private String generateOperand(Operand operand) {
@@ -421,20 +415,35 @@ public class JasminGenerator {
 
     private String generateInvokeSpecial(InvokeSpecialInstruction inst) {
         var code = new StringBuilder();
-        for (var op : inst.getOperands()) {
-            code.append(apply((TreeNode) op));
+
+        if (inst.getArguments().isEmpty()) {
+            code.append("aload_0\n");
+        } else {
+            Element objectRef = inst.getArguments().get(0);
+            code.append(apply(objectRef));
         }
-        String owner = ollirResult.getOllirClass().getClassName();
-        String method = inst.getMethodName().toString();
-        String paramsDesc = inst.getArguments().stream()
-                .map(arg -> toDescriptor(arg.getType()))
-                .collect(Collectors.joining());
-        String desc = "(" + paramsDesc + ")" + toDescriptor(inst.getReturnType());
-        code.append("invokespecial ")
-                .append(owner).append("/").append(method)
-                .append(desc).append(NL);
+
+        String className;
+        Element objectRef = inst.getArguments().isEmpty() ? null : inst.getArguments().get(0);
+        if (objectRef instanceof Operand) {
+            className = ((Operand) objectRef).getName();
+        } else {
+            className = ollirResult.getOllirClass().getClassName();
+        }
+
+        String methodName;
+        Element methodNameElement = inst.getMethodName();
+        if (methodNameElement instanceof LiteralElement) {
+            methodName = ((LiteralElement) methodNameElement).getLiteral();
+        } else {
+            throw new RuntimeException("Unsupported method name type: " + methodNameElement.getClass());
+        }
+
+        code.append("invokespecial ").append(className).append("/").append(methodName).append("()V\n");
+
         return code.toString();
     }
+
 
     private String generateSingleOpCond(SingleOpCondInstruction inst) {
         var sb = new StringBuilder();
@@ -486,5 +495,69 @@ public class JasminGenerator {
 
         return code.toString();
     }
+
+    private String generateUnaryOp(UnaryOpInstruction unaryOp) {
+        var code = new StringBuilder();
+
+        code.append(apply(unaryOp.getOperand()));
+
+        switch (unaryOp.getOperation().getOpType()) {
+            case NOTB -> {
+                int id = booleanOpCount++;
+                String trueLabel = "NOTB_true_" + id;
+                String endLabel = "NOTB_end_" + id;
+
+                code.append("ifeq ").append(trueLabel).append(NL);
+                code.append("iconst_0").append(NL);
+                code.append("goto ").append(endLabel).append(NL);
+                code.append(trueLabel).append(":").append(NL);
+                code.append("iconst_1").append(NL);
+                code.append(endLabel).append(":").append(NL);
+            }
+            default -> throw new NotImplementedException("Unary operation not implemented: " + unaryOp.getOperation().getOpType());
+        }
+
+        return code.toString();
+    }
+
+
+    private String generateInvokeVirtual(InvokeVirtualInstruction inst) {
+        var code = new StringBuilder();
+
+        Element objectRef = inst.getOperands().getFirst();
+        code.append(apply(objectRef));
+
+        for (int i = 1; i < inst.getOperands().size(); i++) {
+            code.append(apply(inst.getOperands().get(i)));
+        }
+
+        String methodName;
+        if (inst.getMethodName() instanceof LiteralElement) {
+            methodName = ((LiteralElement) inst.getMethodName()).getLiteral();
+        } else if (inst.getMethodName() instanceof Operand) {
+            methodName = ((Operand) inst.getMethodName()).getName();
+        } else {
+            throw new NotImplementedException("Unsupported method name type: " + inst.getMethodName().getClass());
+        }
+
+        String className;
+        if (objectRef instanceof Operand) {
+            className = ((Operand) objectRef).getName();
+        } else if (objectRef instanceof LiteralElement) {
+            className = ((LiteralElement) objectRef).getLiteral();
+        } else {
+            throw new NotImplementedException("Unsupported object reference type: " + objectRef.getClass());
+        }
+
+        String descriptor = "(" + inst.getOperands().subList(1, inst.getOperands().size()).stream()
+                .map(arg -> toDescriptor(arg.getType()))
+                .collect(Collectors.joining()) + ")" + toDescriptor(inst.getReturnType());
+
+        code.append("invokevirtual ").append(className).append("/").append(methodName)
+                .append(descriptor).append(NL);
+
+        return code.toString();
+    }
+
 
 }
