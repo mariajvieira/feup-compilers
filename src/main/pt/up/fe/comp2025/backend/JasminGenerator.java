@@ -45,6 +45,8 @@ public class JasminGenerator {
 
     private final FunctionClassMap<TreeNode, String> generators;
 
+    private int localLimit;
+
     public JasminGenerator(OllirResult ollirResult) {
         this.ollirResult = ollirResult;
 
@@ -76,6 +78,8 @@ public class JasminGenerator {
         generators.put(Operand.class, this::generateOperand);
         generators.put(UnaryOpInstruction.class, this::generateUnaryOp);
         generators.put(InvokeVirtualInstruction.class, this::generateInvokeVirtual);
+        generators.put(ArrayLengthInstruction.class, this::generateArrayLength);
+
 
     }
 
@@ -185,7 +189,7 @@ public class JasminGenerator {
         currentMethod = method;
         var code = new StringBuilder();
 
-        var modifier   = types.getModifier(method.getMethodAccessModifier());
+        var modifier = types.getModifier(method.getMethodAccessModifier());
         var methodName = method.getMethodName();
         var params = method.getParams().stream()
                 .map(p -> toDescriptor(p.getType()))
@@ -197,30 +201,18 @@ public class JasminGenerator {
                 .append(methodName)
                 .append("(").append(params).append(")")
                 .append(returnType).append(NL);
-        code.append(TAB).append(".limit stack 99").append(NL);
-        code.append(TAB).append(".limit locals 99").append(NL);
+
+        stackLimit = 0;
+        localLimit = calculateLocalLimit(method);
+
+        code.append(TAB).append(".limit stack ").append(stackLimit).append(NL);
+        code.append(TAB).append(".limit locals ").append(localLimit).append(NL);
 
         for (var inst : method.getInstructions()) {
             var instCode = StringLines.getLines(apply(inst))
                     .stream()
                     .collect(Collectors.joining(NL + TAB, TAB, NL));
             code.append(instCode);
-            if (inst instanceof ReturnInstruction) break;
-        }
-        for (var inst : method.getInstructions()) {
-            if (inst instanceof ReturnInstruction returnInst) {
-                code.append(TAB).append(generateReturn(returnInst));
-                break;
-            }
-            if (inst instanceof AssignInstruction assign) {
-                code.append(TAB).append(generateAssign(assign));
-            } else if (inst instanceof BinaryOpInstruction binOp) {
-                code.append(TAB).append(generateBinaryOp(binOp));
-            } else if (inst instanceof SingleOpInstruction singleOp) {
-                code.append(TAB).append(generateSingleOp(singleOp));
-            } else {
-                break;
-            }
         }
 
         code.append(".end method\n");
@@ -230,30 +222,13 @@ public class JasminGenerator {
 
     private String generateAssign(AssignInstruction assign) {
         var code = new StringBuilder();
-        code.append(apply(assign.getRhs()));
-        var op    = (Operand) assign.getDest();
-        var desc  = currentMethod.getVarTable().get(op.getName());
-        int reg   = desc.getVirtualReg();
+        code.append(apply(assign.getRhs())); // Push RHS value onto the stack
+        var op = (Operand) assign.getDest();
+        var desc = currentMethod.getVarTable().get(op.getName());
+        int reg = desc.getVirtualReg();
         boolean isInt = op.getType().toString().equals("INT32");
-        String instr;
-        if (isInt) {
-            switch (reg) {
-                case 0: instr = "istore_0"; break;
-                case 1: instr = "istore_1"; break;
-                case 2: instr = "istore_2"; break;
-                case 3: instr = "istore_3"; break;
-                default: instr = "istore " + reg; break;
-            }
-        } else {
-            switch (reg) {
-                case 0: instr = "astore_0"; break;
-                case 1: instr = "astore_1"; break;
-                case 2: instr = "astore_2"; break;
-                case 3: instr = "astore_3"; break;
-                default: instr = "astore " + reg; break;
-            }
-        }
-        code.append(instr).append(NL);
+        String instr = isInt ? "istore " : "astore ";
+        code.append(instr).append(reg).append(NL); // Store value in the correct register
         return code.toString();
     }
 
@@ -403,13 +378,24 @@ public class JasminGenerator {
 
     private String generateNewInstruction(NewInstruction inst) {
         var code = new StringBuilder();
-        String cls = inst.getReturnType().toString();
-        if (cls.startsWith("OBJECTREF(") && cls.endsWith(")")) {
-            cls = cls.substring(10, cls.length() - 1);
+        var type = inst.getReturnType();
+
+        if (type instanceof ArrayType) {
+            // Handle array creation
+            ArrayType arrayType = (ArrayType) type;
+            String elementType = toDescriptor(arrayType.getElementType());
+            code.append("newarray ").append(elementType.equals("I") ? "int" : elementType).append(NL);
+        } else {
+            // Handle object creation
+            String cls = type.toString();
+            if (cls.startsWith("OBJECTREF(") && cls.endsWith(")")) {
+                cls = cls.substring(10, cls.length() - 1);
+            }
+            code.append("new ").append(cls).append(NL);
+            code.append("dup").append(NL);
+            code.append("invokespecial ").append(cls).append("/<init>()V").append(NL);
         }
-        code.append("new ").append(cls).append(NL);
-        code.append("dup").append(NL);
-        code.append("invokespecial ").append(cls).append("/<init>()V").append(NL);
+
         return code.toString();
     }
 
@@ -559,5 +545,21 @@ public class JasminGenerator {
         return code.toString();
     }
 
+    private String generateArrayLength(ArrayLengthInstruction arrayLengthInst) {
+        var code = new StringBuilder();
+
+        // Retrieve the array reference using getOperands()
+        var arrayRef = arrayLengthInst.getOperands().get(0);
+        code.append(apply(arrayRef)); // Push array reference onto the stack
+
+        // Add the arraylength instruction
+        code.append("arraylength").append(NL); // Push array length onto the stack
+
+        return code.toString();
+    }
+
+    private int calculateLocalLimit(Method method) {
+        return method.getVarTable().size();
+    }
 
 }
