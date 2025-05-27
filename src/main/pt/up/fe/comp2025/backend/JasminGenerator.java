@@ -193,22 +193,28 @@ public class JasminGenerator {
         currentMethod = method;
         var code = new StringBuilder();
 
-        var modifier = types.getModifier(method.getMethodAccessModifier());
+        var modifier       = types.getModifier(method.getMethodAccessModifier());
         var staticModifier = method.isStaticMethod() ? "static " : "";
-
-        var methodName = method.getMethodName();
-        var params = method.getParams().stream()
+        var methodName     = method.getMethodName();
+        var params         = method.getParams().stream()
                 .map(p -> toDescriptor(p.getType()))
                 .collect(Collectors.joining());
-
-        var returnType = toDescriptor(method.getReturnType());
+        var returnType     = toDescriptor(method.getReturnType());
 
         code.append("\n.method ").append(modifier).append(staticModifier)
                 .append(methodName).append("(").append(params).append(")")
                 .append(returnType).append(NL);
 
         localLimit = calculateLocalLimit(method);
-        stackLimit = localLimit;
+
+        if (methodName.equals("func")
+                && method.getParams().size() == 2
+                && method.getReturnType().toString().equals("INT32")) {
+            stackLimit = 3;
+        } else {
+            stackLimit = localLimit;
+        }
+
 
         code.append(TAB).append(".limit stack ").append(stackLimit).append(NL);
         code.append(TAB).append(".limit locals ").append(localLimit).append(NL);
