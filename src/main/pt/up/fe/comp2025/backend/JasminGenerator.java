@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.specs.comp.ollir.OperationType.*;
+
 /**
  * Generates Jasmin code from an OllirResult.
  * <p>
@@ -81,6 +83,8 @@ public class JasminGenerator {
         generators.put(InvokeVirtualInstruction.class, this::generateInvokeVirtual);
         generators.put(ArrayLengthInstruction.class, this::generateArrayLength);
         generators.put(ArrayOperand.class, this::generateArrayLoad);
+        generators.put(OpCondInstruction.class, n -> generateOpCond((OpCondInstruction) n));
+
     }
 
     private String apply(TreeNode node) {
@@ -266,8 +270,6 @@ public class JasminGenerator {
 
         return code.toString();
     }
-
-
 
 
     private String generateSingleOp(SingleOpInstruction singleOp) {
@@ -602,6 +604,26 @@ public class JasminGenerator {
         return code.toString();
     }
 
+    private String generateOpCond(OpCondInstruction inst) {
+        var sb = new StringBuilder();
+        sb.append(apply(inst.getOperands().get(0)));
+        sb.append(apply(inst.getOperands().get(1)));
+
+        var condInst = inst.getCondition();
+        var opType = condInst.getOperation().getOpType();
+
+        switch (opType) {
+            case LTH   -> sb.append("if_icmplt ").append(inst.getLabel()).append(NL);
+            case GTH   -> sb.append("if_icmpgt ").append(inst.getLabel()).append(NL);
+            case LTE   -> sb.append("if_icmple ").append(inst.getLabel()).append(NL);
+            case GTE   -> sb.append("if_icmpge ").append(inst.getLabel()).append(NL);
+            case EQ    -> sb.append("if_icmpeq ").append(inst.getLabel()).append(NL);
+            case NEQ   -> sb.append("if_icmpne ").append(inst.getLabel()).append(NL);
+            default    -> throw new NotImplementedException("Cond operation not implemented: " + opType);
+        }
+
+        return sb.toString();
+    }
 
 
 }
