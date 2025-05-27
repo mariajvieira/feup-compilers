@@ -81,10 +81,6 @@ public class JasminGenerator {
         generators.put(InvokeVirtualInstruction.class, this::generateInvokeVirtual);
         generators.put(ArrayLengthInstruction.class, this::generateArrayLength);
         generators.put(ArrayOperand.class, this::generateArrayLoad);
-
-
-
-
     }
 
     private String apply(TreeNode node) {
@@ -419,6 +415,7 @@ public class JasminGenerator {
         return code.toString();
     }
 
+    // file: src/main/pt/up/fe/comp2025/backend/JasminGenerator.java
     private String generateNewInstruction(NewInstruction inst) {
         var code = new StringBuilder();
         var type = inst.getReturnType();
@@ -443,44 +440,37 @@ public class JasminGenerator {
                 cls = cls.substring(10, cls.length() - 1);
             }
             code.append("new ").append(cls).append(NL)
-                    .append("dup").append(NL)
-                    .append("invokespecial ").append(cls).append("/<init>()V").append(NL);
+                    .append("dup").append(NL);
         }
 
         return code.toString();
     }
-
 
     private String generateInvokeSpecial(InvokeSpecialInstruction inst) {
         var code = new StringBuilder();
 
-        if (inst.getArguments().isEmpty()) {
-            code.append("aload_0\n");
-        } else {
-            Element objectRef = inst.getArguments().get(0);
-            code.append(apply(objectRef));
-        }
+        Element receiver = inst.getOperands().get(0);
+        code.append(apply(receiver));
 
-        String className;
-        Element objectRef = inst.getArguments().isEmpty() ? null : inst.getArguments().get(0);
-        if (objectRef instanceof Operand) {
-            className = ((Operand) objectRef).getName();
-        } else {
-            className = ollirResult.getOllirClass().getClassName();
-        }
+        Element mElem = inst.getMethodName();
+        String methodName = mElem instanceof LiteralElement
+                ? ((LiteralElement) mElem).getLiteral()
+                : ((Operand) mElem).getName();
 
-        String methodName;
-        Element methodNameElement = inst.getMethodName();
-        if (methodNameElement instanceof LiteralElement) {
-            methodName = ((LiteralElement) methodNameElement).getLiteral();
-        } else {
-            throw new RuntimeException("Unsupported method name type: " + methodNameElement.getClass());
-        }
+        String rawType = ((Operand) receiver).getType().toString();
+        String className = rawType.startsWith("OBJECTREF(") && rawType.endsWith(")")
+                ? rawType.substring(10, rawType.length() - 1)
+                : rawType;
 
-        code.append("invokespecial ").append(className).append("/").append(methodName).append("()V\n");
+        String descriptor = "()" + "V";
+
+        code.append("invokespecial ")
+                .append(className).append("/").append(methodName)
+                .append("(").append(")V").append(NL);
 
         return code.toString();
     }
+
 
 
     private String generateSingleOpCond(SingleOpCondInstruction inst) {
