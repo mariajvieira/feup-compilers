@@ -554,36 +554,30 @@ public class JasminGenerator {
     private String generateInvokeVirtual(InvokeVirtualInstruction inst) {
         var code = new StringBuilder();
 
-        Element objectRef = inst.getOperands().getFirst();
-        code.append(apply(objectRef));
-
-        for (int i = 1; i < inst.getOperands().size(); i++) {
-            code.append(apply(inst.getOperands().get(i)));
+        var operands = inst.getOperands();
+        Element receiver = operands.get(0);
+        code.append(apply(receiver));
+        for (int i = 2; i < operands.size(); i++) {
+            code.append(apply(operands.get(i)));
         }
 
-        String methodName;
-        if (inst.getMethodName() instanceof LiteralElement) {
-            methodName = ((LiteralElement) inst.getMethodName()).getLiteral();
-        } else if (inst.getMethodName() instanceof Operand) {
-            methodName = ((Operand) inst.getMethodName()).getName();
-        } else {
-            throw new NotImplementedException("Unsupported method name type: " + inst.getMethodName().getClass());
-        }
+        Element mElem = inst.getMethodName();
+        String methodName = mElem instanceof LiteralElement
+                ? ((LiteralElement) mElem).getLiteral()
+                : ((Operand) mElem).getName();
 
-        String className;
-        if (objectRef instanceof Operand) {
-            className = ((Operand) objectRef).getName();
-        } else if (objectRef instanceof LiteralElement) {
-            className = ((LiteralElement) objectRef).getLiteral();
-        } else {
-            throw new NotImplementedException("Unsupported object reference type: " + objectRef.getClass());
-        }
+        String rawType = ((Operand) receiver).getType().toString();
+        String className = rawType.startsWith("OBJECTREF(") && rawType.endsWith(")")
+                ? rawType.substring(10, rawType.length() - 1)
+                : rawType;
 
-        String descriptor = "(" + inst.getOperands().subList(1, inst.getOperands().size()).stream()
-                .map(arg -> toDescriptor(arg.getType()))
-                .collect(Collectors.joining()) + ")" + toDescriptor(inst.getReturnType());
+        String params = operands.subList(2, operands.size()).stream()
+                .map(a -> toDescriptor(a.getType()))
+                .collect(Collectors.joining());
+        String descriptor = "(" + params + ")" + toDescriptor(inst.getReturnType());
 
-        code.append("invokevirtual ").append(className).append("/").append(methodName)
+        code.append("invokevirtual ")
+                .append(className).append("/").append(methodName)
                 .append(descriptor).append(NL);
 
         return code.toString();
