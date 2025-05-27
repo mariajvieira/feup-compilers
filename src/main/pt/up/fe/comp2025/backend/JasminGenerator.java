@@ -350,7 +350,6 @@ public class JasminGenerator {
 
     private String generateReturn(ReturnInstruction returnInst) {
         var code = new StringBuilder();
-
         var operandOpt = returnInst.getOperand();
         if (operandOpt.isEmpty()) {
             code.append("return").append(NL);
@@ -362,6 +361,10 @@ public class JasminGenerator {
             var desc = currentMethod.getVarTable().get(((Operand) operand).getName());
             int reg = desc.getVirtualReg();
             code.append("iload").append(reg == 1 ? "_1" : " " + reg).append(NL);
+        } else if (operand instanceof LiteralElement) {
+            code.append(generateLiteral((LiteralElement) operand));
+        } else if (operand instanceof TreeNode) {
+            code.append(apply((TreeNode) operand));
         }
 
         Type type = operand.getType();
@@ -373,6 +376,7 @@ public class JasminGenerator {
 
         return code.toString();
     }
+
 
     private String toDescriptor(Type type) {
         if (type instanceof ArrayType) {
