@@ -17,6 +17,7 @@ import org.specs.comp.ollir.Element;
 import org.specs.comp.ollir.inst.SingleOpInstruction;
 import org.specs.comp.ollir.ArrayOperand;
 
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -212,11 +213,19 @@ public class JasminGenerator {
         code.append(TAB).append(".limit stack ").append(stackLimit).append(NL);
         code.append(TAB).append(".limit locals ").append(localLimit).append(NL);
 
-        for (var inst : method.getInstructions()) {
-            var instCode = StringLines.getLines(apply(inst))
-                    .stream()
-                    .collect(Collectors.joining(NL + TAB, TAB, NL));
-            code.append(instCode);
+        var labelMap = method.getLabels();
+        var instructions = method.getInstructions();
+
+        for (var inst : instructions) {
+            for (var entry : labelMap.entrySet()) {
+                if (entry.getValue().equals(inst)) {
+                    code.append(TAB)
+                            .append(entry.getKey())
+                            .append(":")
+                            .append(NL);
+                }
+            }
+            code.append(TAB).append(apply(inst));
         }
 
         code.append(".end method\n");
@@ -251,7 +260,8 @@ public class JasminGenerator {
             int reg = currentMethod.getVarTable()
                     .get(destOp.getName())
                     .getVirtualReg();
-            boolean isInt = destOp.getType().toString().equals("INT32");
+            boolean isInt = destOp.getType().toString().equals("INT32")
+                    || destOp.getType().toString().equals("BOOLEAN");
             String instr = isInt
                     ? (reg <= 3 ? "istore_" + reg : "istore " + reg)
                     : (reg <= 3 ? "astore_" + reg : "astore " + reg);
@@ -292,7 +302,8 @@ public class JasminGenerator {
     private String generateOperand(Operand operand) {
         var desc = currentMethod.getVarTable().get(operand.getName());
         int reg = desc.getVirtualReg();
-        boolean isInt = operand.getType().toString().equals("INT32");
+        boolean isInt = operand.getType().toString().equals("INT32")
+                || operand.getType().toString().equals("BOOLEAN");
         if (isInt) {
             switch (reg) {
                 case 0: return "iload_0" + NL;
@@ -483,45 +494,37 @@ public class JasminGenerator {
         return "goto " + inst.getLabel() + NL;
     }
 
+
     private String generateInvokeStatic(InvokeStaticInstruction inst) {
-        var code = new StringBuilder();
-        var operands = inst.getOperands();
-
-        var classOp = (Operand) operands.get(0);
-        String owner = classOp.getName();
-
-        for (var op : operands.subList(1, operands.size())) {
-            code.append(apply((TreeNode) op));
+        var sb = new StringBuilder();
+        var ops = inst.getOperands();
+        var args = ops.subList(2, ops.size());
+        for (var arg : args) {
+            sb.append(apply(arg));
         }
-        Element methodNameElement = inst.getMethodName();
-        String methodNameString;
+        Element ownerElem = ops.get(0);
+        String owner = ownerElem instanceof LiteralElement
+                ? ((LiteralElement) ownerElem).getLiteral()
+                : ((Operand) ownerElem).getName();
 
-        if (methodNameElement instanceof LiteralElement) {
-            methodNameString = ((LiteralElement) methodNameElement).getLiteral();
-            if (methodNameString.startsWith("\"") && methodNameString.endsWith("\"")) {
-                methodNameString = methodNameString.substring(1, methodNameString.length() - 1);
-            }
-        } else if (methodNameElement instanceof Operand) {
-            methodNameString = ((Operand) methodNameElement).getName();
-        } else {
+        Element mElem = inst.getMethodName();
+        String mName = mElem instanceof LiteralElement
+                ? ((LiteralElement) mElem).getLiteral()
+                : ((Operand) mElem).getName();
 
-            methodNameString = methodNameElement.toString();
-        }
-
-        String paramsDescriptor = inst.getArguments().stream()
-                .map(arg -> toDescriptor(arg.getType()))
+        String params = args.stream()
+                .map(o -> toDescriptor(o.getType()))
                 .collect(Collectors.joining());
-        String returnTypeDescriptor = toDescriptor(inst.getReturnType());
-        String methodDescriptor = "(" + paramsDescriptor + ")" + returnTypeDescriptor;
 
-        code.append("invokestatic ")
-                .append(owner).append("/")
-                .append(methodNameString)
-                .append(methodDescriptor)
+        sb.append("invokestatic ")
+                .append(owner).append("/").append(mName)
+                .append("(").append(params).append(")")
+                .append(toDescriptor(inst.getReturnType()))
                 .append(NL);
 
-        return code.toString();
+        return sb.toString();
     }
+
 
     private String generateUnaryOp(UnaryOpInstruction unaryOp) {
         var code = new StringBuilder();
