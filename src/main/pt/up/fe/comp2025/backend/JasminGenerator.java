@@ -190,6 +190,8 @@ public class JasminGenerator {
         var code = new StringBuilder();
 
         var modifier = types.getModifier(method.getMethodAccessModifier());
+        var staticModifier = method.isStaticMethod() ? "static " : "";
+
         var methodName = method.getMethodName();
         var params = method.getParams().stream()
                 .map(p -> toDescriptor(p.getType()))
@@ -197,13 +199,12 @@ public class JasminGenerator {
 
         var returnType = toDescriptor(method.getReturnType());
 
-        code.append("\n.method ").append(modifier)
-                .append(methodName)
-                .append("(").append(params).append(")")
+        code.append("\n.method ").append(modifier).append(staticModifier)
+                .append(methodName).append("(").append(params).append(")")
                 .append(returnType).append(NL);
 
-        stackLimit = 0;
         localLimit = calculateLocalLimit(method);
+        stackLimit = localLimit;
 
         code.append(TAB).append(".limit stack ").append(stackLimit).append(NL);
         code.append(TAB).append(".limit locals ").append(localLimit).append(NL);
@@ -376,28 +377,41 @@ public class JasminGenerator {
         return code.toString();
     }
 
+    // File: src/main/pt/up/fe/comp2025/backend/JasminGenerator.java
     private String generateNewInstruction(NewInstruction inst) {
         var code = new StringBuilder();
         var type = inst.getReturnType();
 
         if (type instanceof ArrayType) {
-            // Handle array creation
+            // 1) load the size expression (second operand)
+            Element sizeElem = inst.getOperands().get(1);
+            if (sizeElem instanceof Operand) {
+                code.append(generateOperand((Operand) sizeElem));
+            } else if (sizeElem instanceof LiteralElement) {
+                code.append(generateLiteral((LiteralElement) sizeElem));
+            } else {
+                code.append(apply((TreeNode) sizeElem));
+            }
+
+            // 2) emit newarray
             ArrayType arrayType = (ArrayType) type;
-            String elementType = toDescriptor(arrayType.getElementType());
-            code.append("newarray ").append(elementType.equals("I") ? "int" : elementType).append(NL);
+            String elemDesc = toDescriptor(arrayType.getElementType());
+            String jasType = elemDesc.equals("I") ? "int" : elemDesc;
+            code.append("newarray ").append(jasType).append(NL);
         } else {
-            // Handle object creation
+            // object creation unchanged
             String cls = type.toString();
             if (cls.startsWith("OBJECTREF(") && cls.endsWith(")")) {
                 cls = cls.substring(10, cls.length() - 1);
             }
-            code.append("new ").append(cls).append(NL);
-            code.append("dup").append(NL);
-            code.append("invokespecial ").append(cls).append("/<init>()V").append(NL);
+            code.append("new ").append(cls).append(NL)
+                    .append("dup").append(NL)
+                    .append("invokespecial ").append(cls).append("/<init>()V").append(NL);
         }
 
         return code.toString();
     }
+
 
     private String generateInvokeSpecial(InvokeSpecialInstruction inst) {
         var code = new StringBuilder();
