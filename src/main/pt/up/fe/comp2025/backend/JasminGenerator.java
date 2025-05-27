@@ -200,12 +200,14 @@ public class JasminGenerator {
                 .collect(Collectors.joining());
         var returnType     = toDescriptor(method.getReturnType());
 
-        code.append("\n.method ").append(modifier).append(staticModifier)
-                .append(methodName).append("(").append(params).append(")")
+        code.append("\n.method ")
+                .append(modifier)
+                .append(staticModifier)
+                .append(methodName)
+                .append("(").append(params).append(")")
                 .append(returnType).append(NL);
 
         localLimit = calculateLocalLimit(method);
-
         if (methodName.equals("func")
                 && method.getParams().size() == 2
                 && method.getReturnType().toString().equals("INT32")) {
@@ -214,16 +216,15 @@ public class JasminGenerator {
             stackLimit = localLimit;
         }
 
-
         code.append(TAB).append(".limit stack ").append(stackLimit).append(NL);
         code.append(TAB).append(".limit locals ").append(localLimit).append(NL);
 
-        var labelMap = method.getLabels();
+        var labelMap     = method.getLabels();
         var instructions = method.getInstructions();
 
+        for (int i = 0; i < instructions.size(); i++) {
+            var inst = instructions.get(i);
 
-        for (int idx = 0; idx < instructions.size(); idx++) {
-            var inst = instructions.get(idx);
             if (inst instanceof AssignInstruction binAssign) {
                 var destTmp = binAssign.getDest();
                 var rhs     = binAssign.getRhs();
@@ -232,50 +233,65 @@ public class JasminGenerator {
                         && binOp.getOperation().getOpType() == ADD
                         && binOp.getLeftOperand() instanceof Operand baseOp
                         && binOp.getRightOperand() instanceof LiteralElement lit
-                        && idx + 1 < instructions.size()) {
+                        && i + 1 < instructions.size()) {
 
+                    Instruction next = instructions.get(i + 1);
+                    if (next instanceof AssignInstruction movAssign
+                            && movAssign.getDest() instanceof Operand destOp
+                            && movAssign.getRhs() instanceof SingleOpInstruction soInst
+                            && soInst.getSingleOperand() instanceof Operand rhsOp
+                            && rhsOp.getName().equals(tmpOp.getName())
+                            && destOp.getName().equals(baseOp.getName())) {
 
-                    Instruction next = instructions.get(idx + 1);
-                    if (next instanceof AssignInstruction) {
-                        AssignInstruction movAssign = (AssignInstruction) next;
-                        if (movAssign.getDest() instanceof Operand destOp
-                                && movAssign.getRhs() instanceof SingleOpInstruction soInst
-                                && soInst.getSingleOperand() instanceof Operand rhsOp
-                                && rhsOp.getName().equals(tmpOp.getName())
-                                && destOp.getName().equals(baseOp.getName())) {
-
-                            int val = Integer.parseInt(lit.getLiteral());
-                            if (val >= -128 && val <= 127) {
-                                int reg = currentMethod.getVarTable()
-                                        .get(destOp.getName())
-                                        .getVirtualReg();
-                                code.append(TAB).append("iinc ")
-                                        .append(reg).append(" ").append(val)
-                                        .append(NL);
-                                idx++;
-                                continue;
-                            }
+                        int val = Integer.parseInt(lit.getLiteral());
+                        if (val >= -128 && val <= 127) {
+                            int reg = currentMethod.getVarTable()
+                                    .get(destOp.getName())
+                                    .getVirtualReg();
+                            code.append(TAB).append("iinc ")
+                                    .append(reg).append(" ").append(val)
+                                    .append(NL);
+                            i++;
+                            continue;
                         }
                     }
-
                 }
             }
+
             for (var entry : labelMap.entrySet()) {
                 if (entry.getValue().equals(inst)) {
-                    code.append(TAB)
-                            .append(entry.getKey())
-                            .append(":")
-                            .append(NL);
+                    code.append(TAB).append(entry.getKey()).append(":").append(NL);
+                }
+            }
+
+            if (inst instanceof AssignInstruction asg
+                    && asg.getRhs() instanceof BinaryOpInstruction bin
+                    && (bin.getOperation().getOpType() == LTH
+                    || bin.getOperation().getOpType() == GTE)
+                    && bin.getRightOperand() instanceof LiteralElement lit
+                    && "0".equals(lit.getLiteral())
+                    && i + 1 < instructions.size()
+                    && instructions.get(i + 1) instanceof SingleOpCondInstruction cond) {
+
+                var dest   = (Operand) asg.getDest();
+                var condOp = (Operand) cond.getOperands().get(0);
+
+                if (dest.getName().equals(condOp.getName())) {
+                    code.append(TAB).append(apply(bin.getLeftOperand()));
+                    String instr = bin.getOperation().getOpType() == LTH ? "iflt " : "ifge ";
+                    code.append(instr).append(cond.getLabel()).append(NL);
+                    i++;
+                    continue;
                 }
             }
             code.append(TAB).append(apply(inst));
         }
 
-
-        code.append(".end method\n");
+        code.append(".end method").append(NL);
         currentMethod = null;
         return code.toString();
     }
+
 
 
     private String generateAssign(AssignInstruction assign) {
