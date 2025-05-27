@@ -15,6 +15,7 @@ import org.specs.comp.ollir.type.Type;
 import org.specs.comp.ollir.type.ArrayType;
 import org.specs.comp.ollir.Element;
 import org.specs.comp.ollir.inst.SingleOpInstruction;
+import org.specs.comp.ollir.ArrayOperand;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,13 +73,15 @@ public class JasminGenerator {
         generators.put(InvokeSpecialInstruction.class, this::generateInvokeSpecial);
         generators.put(SingleOpCondInstruction.class,
                 n -> generateSingleOpCond((SingleOpCondInstruction) n));
-
         generators.put(GotoInstruction.class, this::generateGoto);
         generators.put(InvokeStaticInstruction.class, this::generateInvokeStatic);
         generators.put(Operand.class, this::generateOperand);
         generators.put(UnaryOpInstruction.class, this::generateUnaryOp);
         generators.put(InvokeVirtualInstruction.class, this::generateInvokeVirtual);
         generators.put(ArrayLengthInstruction.class, this::generateArrayLength);
+        generators.put(ArrayOperand.class, this::generateArrayLoad);
+
+
 
 
     }
@@ -221,17 +224,45 @@ public class JasminGenerator {
         return code.toString();
     }
 
+
     private String generateAssign(AssignInstruction assign) {
         var code = new StringBuilder();
-        code.append(apply(assign.getRhs())); // Push RHS value onto the stack
-        var op = (Operand) assign.getDest();
-        var desc = currentMethod.getVarTable().get(op.getName());
-        int reg = desc.getVirtualReg();
-        boolean isInt = op.getType().toString().equals("INT32");
-        String instr = isInt ? "istore " : "astore ";
-        code.append(instr).append(reg).append(NL); // Store value in the correct register
+
+        if (assign.getDest() instanceof ArrayOperand) {
+            var ac = (ArrayOperand) assign.getDest();
+
+            int arrReg = currentMethod.getVarTable()
+                    .get(ac.getName())
+                    .getVirtualReg();
+            code.append(arrReg <= 3
+                            ? "aload_" + arrReg
+                            : "aload " + arrReg)
+                    .append(NL);
+            code.append(apply(ac.getIndexOperands().get(0)));
+
+            code.append(apply(assign.getRhs()));
+
+            code.append("iastore").append(NL);
+        }
+        else {
+            code.append(apply(assign.getRhs()));
+
+            var destOp = (Operand) assign.getDest();
+            int reg = currentMethod.getVarTable()
+                    .get(destOp.getName())
+                    .getVirtualReg();
+            boolean isInt = destOp.getType().toString().equals("INT32");
+            String instr = isInt
+                    ? (reg <= 3 ? "istore_" + reg : "istore " + reg)
+                    : (reg <= 3 ? "astore_" + reg : "astore " + reg);
+            code.append(instr).append(NL);
+        }
+
         return code.toString();
     }
+
+
+
 
     private String generateSingleOp(SingleOpInstruction singleOp) {
         return apply(singleOp.getSingleOperand());
@@ -377,13 +408,11 @@ public class JasminGenerator {
         return code.toString();
     }
 
-    // File: src/main/pt/up/fe/comp2025/backend/JasminGenerator.java
     private String generateNewInstruction(NewInstruction inst) {
         var code = new StringBuilder();
         var type = inst.getReturnType();
 
         if (type instanceof ArrayType) {
-            // 1) load the size expression (second operand)
             Element sizeElem = inst.getOperands().get(1);
             if (sizeElem instanceof Operand) {
                 code.append(generateOperand((Operand) sizeElem));
@@ -393,13 +422,11 @@ public class JasminGenerator {
                 code.append(apply((TreeNode) sizeElem));
             }
 
-            // 2) emit newarray
             ArrayType arrayType = (ArrayType) type;
             String elemDesc = toDescriptor(arrayType.getElementType());
             String jasType = elemDesc.equals("I") ? "int" : elemDesc;
             code.append("newarray ").append(jasType).append(NL);
         } else {
-            // object creation unchanged
             String cls = type.toString();
             if (cls.startsWith("OBJECTREF(") && cls.endsWith(")")) {
                 cls = cls.substring(10, cls.length() - 1);
@@ -562,12 +589,10 @@ public class JasminGenerator {
     private String generateArrayLength(ArrayLengthInstruction arrayLengthInst) {
         var code = new StringBuilder();
 
-        // Retrieve the array reference using getOperands()
         var arrayRef = arrayLengthInst.getOperands().get(0);
-        code.append(apply(arrayRef)); // Push array reference onto the stack
+        code.append(apply(arrayRef));
 
-        // Add the arraylength instruction
-        code.append("arraylength").append(NL); // Push array length onto the stack
+        code.append("arraylength").append(NL);
 
         return code.toString();
     }
@@ -575,5 +600,21 @@ public class JasminGenerator {
     private int calculateLocalLimit(Method method) {
         return method.getVarTable().size();
     }
+
+    private String generateArrayLoad(ArrayOperand ac) {
+        var code = new StringBuilder();
+        int arrReg = currentMethod.getVarTable()
+                .get(ac.getName())
+                .getVirtualReg();
+        code.append(arrReg <= 3
+                        ? "aload_" + arrReg
+                        : "aload " + arrReg)
+                .append(NL);
+        code.append(apply(ac.getIndexOperands().get(0)));
+        code.append("iaload").append(NL);
+        return code.toString();
+    }
+
+
 
 }
