@@ -10,7 +10,6 @@ import pt.up.fe.comp.jmm.ollir.OllirResult;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.specs.util.classmap.FunctionClassMap;
 import pt.up.fe.specs.util.exceptions.NotImplementedException;
-import pt.up.fe.specs.util.utilities.StringLines;
 import org.specs.comp.ollir.type.Type;
 import org.specs.comp.ollir.type.ArrayType;
 import org.specs.comp.ollir.Element;
@@ -222,7 +221,45 @@ public class JasminGenerator {
         var labelMap = method.getLabels();
         var instructions = method.getInstructions();
 
-        for (var inst : instructions) {
+
+        for (int idx = 0; idx < instructions.size(); idx++) {
+            var inst = instructions.get(idx);
+            if (inst instanceof AssignInstruction binAssign) {
+                var destTmp = binAssign.getDest();
+                var rhs     = binAssign.getRhs();
+                if (destTmp instanceof Operand tmpOp
+                        && rhs instanceof BinaryOpInstruction binOp
+                        && binOp.getOperation().getOpType() == ADD
+                        && binOp.getLeftOperand() instanceof Operand baseOp
+                        && binOp.getRightOperand() instanceof LiteralElement lit
+                        && idx + 1 < instructions.size()) {
+
+
+                    Instruction next = instructions.get(idx + 1);
+                    if (next instanceof AssignInstruction) {
+                        AssignInstruction movAssign = (AssignInstruction) next;
+                        if (movAssign.getDest() instanceof Operand destOp
+                                && movAssign.getRhs() instanceof SingleOpInstruction soInst
+                                && soInst.getSingleOperand() instanceof Operand rhsOp
+                                && rhsOp.getName().equals(tmpOp.getName())
+                                && destOp.getName().equals(baseOp.getName())) {
+
+                            int val = Integer.parseInt(lit.getLiteral());
+                            if (val >= -128 && val <= 127) {
+                                int reg = currentMethod.getVarTable()
+                                        .get(destOp.getName())
+                                        .getVirtualReg();
+                                code.append(TAB).append("iinc ")
+                                        .append(reg).append(" ").append(val)
+                                        .append(NL);
+                                idx++;
+                                continue;
+                            }
+                        }
+                    }
+
+                }
+            }
             for (var entry : labelMap.entrySet()) {
                 if (entry.getValue().equals(inst)) {
                     code.append(TAB)
@@ -234,6 +271,7 @@ public class JasminGenerator {
             code.append(TAB).append(apply(inst));
         }
 
+
         code.append(".end method\n");
         currentMethod = null;
         return code.toString();
@@ -243,31 +281,53 @@ public class JasminGenerator {
     private String generateAssign(AssignInstruction assign) {
         var code = new StringBuilder();
 
+        if (assign.getDest() instanceof Operand && assign.getRhs() instanceof BinaryOpInstruction) {
+            var bin = (BinaryOpInstruction) assign.getRhs();
+            if (bin.getOperation().getOpType() == ADD) {
+                var left   = bin.getLeftOperand();
+                var right  = bin.getRightOperand();
+                Operand destOp = (Operand) assign.getDest();
+
+                if (left instanceof Operand
+                        && right instanceof LiteralElement
+                        && destOp.getName().equals(((Operand) left).getName())) {
+                    try {
+                        int val = Integer.parseInt(((LiteralElement) right).getLiteral());
+                        if (val >= -128 && val <= 127) {
+                            int reg = currentMethod.getVarTable().get(destOp.getName()).getVirtualReg();
+                            code.append("iinc ").append(reg).append(" ").append(val).append(NL);
+                            return code.toString();
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+
+                if (right instanceof Operand
+                        && left instanceof LiteralElement
+                        && destOp.getName().equals(((Operand) right).getName())) {
+                    try {
+                        int val = Integer.parseInt(((LiteralElement) left).getLiteral());
+                        if (val >= -128 && val <= 127) {
+                            int reg = currentMethod.getVarTable().get(destOp.getName()).getVirtualReg();
+                            code.append("iinc ").append(reg).append(" ").append(val).append(NL);
+                            return code.toString();
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        }
+
         if (assign.getDest() instanceof ArrayOperand) {
             var ac = (ArrayOperand) assign.getDest();
-
-            int arrReg = currentMethod.getVarTable()
-                    .get(ac.getName())
-                    .getVirtualReg();
-            code.append(arrReg <= 3
-                            ? "aload_" + arrReg
-                            : "aload " + arrReg)
-                    .append(NL);
+            int arrReg = currentMethod.getVarTable().get(ac.getName()).getVirtualReg();
+            code.append(arrReg <= 3 ? "aload_" + arrReg : "aload " + arrReg).append(NL);
             code.append(apply(ac.getIndexOperands().get(0)));
-
             code.append(apply(assign.getRhs()));
-
             code.append("iastore").append(NL);
-        }
-        else {
+        } else {
             code.append(apply(assign.getRhs()));
-
             var destOp = (Operand) assign.getDest();
-            int reg = currentMethod.getVarTable()
-                    .get(destOp.getName())
-                    .getVirtualReg();
-            boolean isInt = destOp.getType().toString().equals("INT32")
-                    || destOp.getType().toString().equals("BOOLEAN");
+            int reg = currentMethod.getVarTable().get(destOp.getName()).getVirtualReg();
+            boolean isInt = destOp.getType().toString().matches("INT32|BOOLEAN");
             String instr = isInt
                     ? (reg <= 3 ? "istore_" + reg : "istore " + reg)
                     : (reg <= 3 ? "astore_" + reg : "astore " + reg);
@@ -276,7 +336,6 @@ public class JasminGenerator {
 
         return code.toString();
     }
-
 
     private String generateSingleOp(SingleOpInstruction singleOp) {
         return apply(singleOp.getSingleOperand());
