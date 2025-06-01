@@ -1,3 +1,6 @@
-# Compiler Project
+# Compiler Project - Group 9a
 
-Contains a reference implementation for the compiler project.
+Work distribution:
+- Duarte Marques: 33%
+- Maria Vieira: 33%
+- Marta Cruz: 33%
