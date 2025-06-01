@@ -21,7 +21,7 @@ THIS : 'this' ;
 
 
 // Tokens
-INTEGER : '0' | [1-9] [0-9]* ;
+INTEGER : '-'? [1-9] [0-9]* | '0' ;
 ID : [a-zA-Z_][a-zA-Z0-9_]* ;
 COMMENT : '//' ~[\r\n]* -> skip ;
 MULTILINE_COMMENT : '/*' .*? '*/' -> skip ;

@@ -1,4 +1,3 @@
-import java.io.*;
 class InstSelection_ifge {
     public static void main(String[] args) {
         int a;

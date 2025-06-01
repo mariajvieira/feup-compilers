@@ -264,10 +264,9 @@ public class JasminGenerator {
                 }
             }
 
+
             if (inst instanceof AssignInstruction asg
                     && asg.getRhs() instanceof BinaryOpInstruction bin
-                    && (bin.getOperation().getOpType() == LTH
-                    || bin.getOperation().getOpType() == GTE)
                     && bin.getRightOperand() instanceof LiteralElement lit
                     && "0".equals(lit.getLiteral())
                     && i + 1 < instructions.size()
@@ -275,10 +274,20 @@ public class JasminGenerator {
 
                 var dest   = (Operand) asg.getDest();
                 var condOp = (Operand) cond.getOperands().get(0);
-
                 if (dest.getName().equals(condOp.getName())) {
                     code.append(TAB).append(apply(bin.getLeftOperand()));
-                    String instr = bin.getOperation().getOpType() == LTH ? "iflt " : "ifge ";
+
+                    String instr;
+                    switch (bin.getOperation().getOpType()) {
+                        case LTH  -> instr = "iflt ";
+                        case GTE  -> instr = "ifge ";
+                        case GTH  -> instr = "ifgt ";
+                        case LTE  -> instr = "ifle ";
+                        case EQ   -> instr = "ifeq ";
+                        case NEQ  -> instr = "ifne ";
+                        default   -> instr = "";
+                    }
+
                     code.append(instr).append(cond.getLabel()).append(NL);
                     i++;
                     continue;
@@ -291,8 +300,6 @@ public class JasminGenerator {
         currentMethod = null;
         return code.toString();
     }
-
-
 
     private String generateAssign(AssignInstruction assign) {
         var code = new StringBuilder();
@@ -458,7 +465,6 @@ public class JasminGenerator {
         return code.toString();
     }
 
-
     private String toDescriptor(Type type) {
         if (type instanceof ArrayType) {
             ArrayType arrayType = (ArrayType) type;
@@ -473,7 +479,6 @@ public class JasminGenerator {
             default:        throw new NotImplementedException("Descriptor for " + type);
         }
     }
-
 
     private String generatePutField(PutFieldInstruction inst) {
         var code = new StringBuilder();
@@ -502,7 +507,6 @@ public class JasminGenerator {
         return code.toString();
     }
 
-    // file: src/main/pt/up/fe/comp2025/backend/JasminGenerator.java
     private String generateNewInstruction(NewInstruction inst) {
         var code = new StringBuilder();
         var type = inst.getReturnType();
@@ -558,8 +562,6 @@ public class JasminGenerator {
         return code.toString();
     }
 
-
-
     private String generateSingleOpCond(SingleOpCondInstruction inst) {
         var sb = new StringBuilder();
         sb.append(apply(inst.getOperands().get(0)));
@@ -570,7 +572,6 @@ public class JasminGenerator {
     private String generateGoto(GotoInstruction inst) {
         return "goto " + inst.getLabel() + NL;
     }
-
 
     private String generateInvokeStatic(InvokeStaticInstruction inst) {
         var sb = new StringBuilder();
@@ -602,7 +603,6 @@ public class JasminGenerator {
         return sb.toString();
     }
 
-
     private String generateUnaryOp(UnaryOpInstruction unaryOp) {
         var code = new StringBuilder();
 
@@ -626,7 +626,6 @@ public class JasminGenerator {
 
         return code.toString();
     }
-
 
     private String generateInvokeVirtual(InvokeVirtualInstruction inst) {
         var code = new StringBuilder();
