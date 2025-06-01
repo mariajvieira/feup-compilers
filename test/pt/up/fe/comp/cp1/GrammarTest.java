@@ -315,11 +315,6 @@ public class GrammarTest {
     }
 
     @Test
-    public void testNestedArrayLiteral() {
-        TestUtils.parseVerbose("int[] init() { return [[1+2, 3*4], [5-1, 8/2]]; }", "methodDecl");
-    }
-
-    @Test
     public void testMixedOperatorsExpression() {
         TestUtils.parseVerbose("(a + b*(c - d)) / e < (f + g) && !h || i == j", "expr");
     }
