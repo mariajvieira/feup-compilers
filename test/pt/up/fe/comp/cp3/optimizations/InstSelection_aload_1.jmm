@@ -1,0 +1,7 @@
+import java.io.*;
+class InstSelection_aload_1 {
+    public static void main(String[] args) {
+        String[] arr;
+        arr = args;
+    }
+}

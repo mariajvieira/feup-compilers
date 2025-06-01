@@ -1,0 +1,10 @@
+import java.io.*;
+class InstSelection_ifle {
+    public static void main(String[] args) {
+        int a;
+        a = -1;
+        if (a <= 0) {
+            a = 6;
+        }
+    }
+}

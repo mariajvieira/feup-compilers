@@ -1,0 +1,14 @@
+import io;
+MyClass {
+
+    .field public intArray.array.i32;
+    .field public boolArray.array.bool;
+
+    .construct MyClass().V {
+        invokespecial(this, "<init>").V;
+    }
+
+    .method public static main(args.array.String).V {
+        ret.V;
+    }
+}

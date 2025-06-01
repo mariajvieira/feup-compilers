@@ -1,0 +1,10 @@
+import java.io.*;
+class InstSelection_ifge {
+    public static void main(String[] args) {
+        int a;
+        a = 0;
+        if (a >= 0) {
+            a = 4;
+        }
+    }
+}

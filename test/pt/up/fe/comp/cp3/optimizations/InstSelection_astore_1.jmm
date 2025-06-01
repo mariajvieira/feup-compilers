@@ -1,0 +1,7 @@
+import java.io.*;
+class InstSelection_astore_1 {
+    public void foo(String[] param) {
+        param = param;
+    }
+    public static void main(String[] args) {}
+}

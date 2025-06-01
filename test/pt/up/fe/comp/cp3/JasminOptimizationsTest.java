@@ -122,4 +122,49 @@ public class JasminOptimizationsTest {
     }
 
 
+    // ADDIITONAL TESTS
+
+    @Test
+    public void section1_InstSelection_aload_1() {
+        JasminResult jasminResult = getJasminResult("InstSelection_aload_1.jmm");
+        CpUtils.matches(jasminResult, "aload_1");
+    }
+
+    @Test
+    public void section1_InstSelection_astore_1() {
+        JasminResult jasminResult = getJasminResult("InstSelection_astore_1.jmm");
+        CpUtils.matches(jasminResult, "astore_1");
+    }
+
+    @Test
+    public void section1_InstSelection_ifeq() {
+        JasminResult jasminResult = getJasminResult("InstSelection_ifeq.jmm");
+        CpUtils.matches(jasminResult, "\\bifeq\\b");
+    }
+
+    @Test
+    public void section1_InstSelection_ifne() {
+        JasminResult jasminResult = getJasminResult("InstSelection_ifne.jmm");
+        CpUtils.matches(jasminResult, "\\bifne\\b");
+    }
+
+    @Test
+    public void section1_InstSelection_ifgt() {
+        JasminResult jasminResult = getJasminResult("InstSelection_ifgt.jmm");
+        CpUtils.matches(jasminResult, "\\bifgt\\b");
+    }
+
+    @Test
+    public void section1_InstSelection_ifge() {
+        JasminResult jasminResult = getJasminResult("InstSelection_ifge.jmm");
+        CpUtils.matches(jasminResult, "\\bifge\\b");
+    }
+
+    @Test
+    public void section1_InstSelection_ifle() {
+        JasminResult jasminResult = getJasminResult("InstSelection_ifle.jmm");
+        CpUtils.matches(jasminResult, "\\bifle\\b");
+    }
+
+
 }

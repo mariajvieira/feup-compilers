@@ -275,4 +275,20 @@ public class JasminTest {
         // Make sure the code compiles
         jasminResult.compile();
     }
+
+
+    // ADDITIONAL TESTS
+    /**
+     * checks that array‐typed class fields are declared in the Jasmin output
+     */
+    @Test
+    public void section5_Arrays_Field_Declaration() {
+        JasminResult jasminResult = getJasminResult("arrays/ArrayFields.ollir");
+        String code = jasminResult.getJasminCode();
+
+        CpUtils.matches(code, "\\.field\\s+public\\s+intArray\\s+\\[I");
+        CpUtils.matches(code, "\\.field\\s+public\\s+boolArray\\s+\\[Z");
+    }
+
+
 }
