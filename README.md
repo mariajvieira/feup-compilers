@@ -1,4 +1,5 @@
 # Compiler Project - Group 9a
+## Grade 16/20
 
 Work distribution:
 - Duarte Marques: 33%
